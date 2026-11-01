@@ -215,3 +215,20 @@ pour le modèle sélectionné. Les changements sont sauvegardés pour les procha
 l’onglet IA des réglages, avec fournisseur, modèle personnalisé et accès API.
 Le raisonnement est proposé pour Codex et Anthropic ; les autres adaptateurs
 n’envoient pas ce paramètre.
+
+### Micro, raccourcis et délai de réponse
+
+Dans **Réglages → General**, clique dans le champ du raccourci puis presse la
+combinaison souhaitée. **Maintenir pour parler** enregistre jusqu’au relâchement ;
+**Appuyer pour démarrer / arrêter** commence au premier appui et envoie au second.
+Le raccourci d’affichage est configurable aussi. Les fragments Hyprland générés
+et gérés par GameBuddy sont actualisés automatiquement, avec détection des
+conflits et retour en arrière si la configuration est invalide. Sur les autres
+bureaux, actualise aussi les raccourcis globaux du bureau. `gamebuddy hyprland-config`
+et `sway-config` tiennent compte du mode choisi.
+
+Le délai cumule transcription, capture, appels IA/recherche et synthèse vocale.
+Les modèles Whisper déjà téléchargés sont préchargés en arrière-plan, sans
+écouter le micro ni accéder au réseau. Dans l’onglet Voice, `tiny` réduit le coût
+CPU au prix d’une précision potentiellement moindre ; `base` reste un compromis.
+`gamebuddy status` expose les dernières durées de transcription et de réponse IA.

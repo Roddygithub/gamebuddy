@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from importlib.resources import files
 from typing import Any
 
@@ -65,6 +66,7 @@ class GameBuddyApp(QObject):
         self.ipc: IPCServer | None = None
         self.tray: QSystemTrayIcon | None = None
         self._speaking = threading.Event()
+        self._timings: dict[str, float] = {}
         self._last_stt_text = ""
 
         self.kin = Kin(self.cfg, self.store, self._kin_callbacks())
@@ -79,6 +81,7 @@ class GameBuddyApp(QObject):
             mode=self.cfg.ui.mode,
             compact_orb=self.cfg.ui.compact_orb,
         )
+        self.widget.ptt_mode = self.cfg.hotkeys.mode
         self._apply_theme()
         self._apply_window_flags()
         self._connect()
@@ -159,6 +162,10 @@ class GameBuddyApp(QObject):
         if not self.store.recent_messages(1):
             self.widget.add_bubble(self.tr("welcome", name=self.cfg.general.assistant_name), "bro")
         self._setup_tray()
+        if self.cfg.speech.stt == "faster_whisper":
+            from gamebuddy.speech.stt import warm_local_model
+
+            self.pool.start(lambda: warm_local_model(self.cfg))
         if not self.cfg.ui.start_hidden:
             self.widget.show()
         if not self.cfg.general.onboarding_done:
@@ -402,7 +409,10 @@ class GameBuddyApp(QObject):
     def _ask_worker(self, text: str) -> None:
         try:
             shot = self.capture_game()
+            started = time.monotonic()
             self.kin.ask(text, shot)
+            self._timings["assistant_s"] = round(time.monotonic() - started, 2)
+            log.info("assistant response: %.2fs", self._timings["assistant_s"])
         except ProviderError as exc:
             key = "error_no_key" if "missing_api_key" in str(exc) else "error_generic"
             self.bridge.error.emit(self.tr(key, error=str(exc)))
@@ -482,8 +492,11 @@ class GameBuddyApp(QObject):
     def _transcribe_and_ask(self, wav: bytes) -> None:
         from gamebuddy.speech.stt import transcribe
 
+        started = time.monotonic()
         try:
             text = transcribe(wav, self.cfg)
+            self._timings["transcription_s"] = round(time.monotonic() - started, 2)
+            log.info("voice transcription: %.2fs", self._timings["transcription_s"])
         except Exception as exc:  # noqa: BLE001
             self.bridge.error.emit(self.tr("error_stt", error=str(exc)))
             return
@@ -494,7 +507,10 @@ class GameBuddyApp(QObject):
         self.bridge.stream_started.emit()
         shot = self.capture_game()
         try:
+            started = time.monotonic()
             self.kin.ask(text, shot)
+            self._timings["assistant_s"] = round(time.monotonic() - started, 2)
+            log.info("assistant response: %.2fs", self._timings["assistant_s"])
         except ProviderError as exc:
             key = "error_no_key" if "missing_api_key" in str(exc) else "error_generic"
             self.bridge.error.emit(self.tr(key, error=str(exc)))
@@ -611,6 +627,12 @@ class GameBuddyApp(QObject):
                 self.set_hands_free(True)
             self._apply_theme()
             self.widget.title.setText(self.cfg.general.assistant_name)
+            if self.cfg.speech.stt == "faster_whisper":
+                from gamebuddy.speech.stt import warm_local_model
+
+                self.pool.start(lambda: warm_local_model(self.cfg))
+            self.widget.ptt_key = self.cfg.hotkeys.push_to_talk
+            self.widget.ptt_mode = self.cfg.hotkeys.mode
             self.widget.set_window_title(self.window.title if self.window else None)
 
     def run_onboarding(self) -> None:
@@ -640,6 +662,9 @@ class GameBuddyApp(QObject):
             "provider": self.cfg.llm.provider,
             "model": self.cfg.llm.model or "default",
             "effort": self.cfg.llm.effort,
+            "talk_shortcut": self.cfg.hotkeys.push_to_talk,
+            "talk_mode": self.cfg.hotkeys.mode,
+            "timings": dict(self._timings),
             "language": self.tr.language,
         }
 

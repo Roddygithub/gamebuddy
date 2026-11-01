@@ -128,6 +128,7 @@ class BuddyWidget(QWidget):
         self.tr = tr
         self.assistant_name = assistant_name
         self.ptt_key = ptt_key
+        self.ptt_mode = "hold"
         self._compact = False
         self._drag_pos: QPoint | None = None
         self._streaming_label: QLabel | None = None
@@ -425,12 +426,18 @@ class BuddyWidget(QWidget):
         if self._mode == "orb" and key in ("listening", "transcribing", "thinking", "searching"):
             self.set_caption(self.tr(key), fade=False)
 
+    def talk_hint(self) -> str:
+        if self.ptt_mode == "toggle":
+            key = self.ptt_key.replace(", ", "+")
+            return (
+                f"{key} : appuyer pour parler, rappuyer pour terminer"
+                if self.tr.language == "fr"
+                else f"{key}: press to start, press again to stop"
+            )
+        return self.tr("hold_hint", key=self.ptt_key.replace(", ", "+"))
+
     def set_window_title(self, title: str | None) -> None:
-        self.hint.setText(
-            self.tr("window_selected", title=title)
-            if title
-            else self.tr("hold_hint", key=self.ptt_key.replace(", ", "+"))
-        )
+        self.hint.setText(self.tr("window_selected", title=title) if title else self.talk_hint())
 
     def set_level(self, value: float) -> None:
         self.level.setValue(int(min(1.0, value * 8) * 100))
