@@ -204,3 +204,14 @@ présentation se réadapte lors d’un changement d’écran ou de résolution.
 `compact_orb = true` force la petite tête ; `false` garde l’orbe avec texte.
 L’icône de Buddy dans le systray est fournie comme icône symbolique monochrome :
 les bureaux compatibles, dont Omarchy, l’adaptent à la couleur de leur barre.
+
+### Choisir l’IA depuis le systray
+
+Clic droit sur la tête de Buddy → **IA / raisonnement** : le choix actif est
+indiqué en haut. Avec Codex, le sous-menu **Modèle** reprend le catalogue local
+du CLI (s’il est disponible), et **Raisonnement** propose les niveaux déclarés
+pour le modèle sélectionné. Les changements sont sauvegardés pour les prochains
+échanges ; le menu est désactivé pendant une réponse. **Autre IA / modèle…** ouvre
+l’onglet IA des réglages, avec fournisseur, modèle personnalisé et accès API.
+Le raisonnement est proposé pour Codex et Anthropic ; les autres adaptateurs
+n’envoient pas ce paramètre.

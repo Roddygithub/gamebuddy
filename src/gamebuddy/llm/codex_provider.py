@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from gamebuddy.llm.base import ChatTurn, LLMProvider, Message, ToolCall, ToolSpec
+from gamebuddy.llm.catalog import CODEX_EFFORTS
 
 ENVELOPE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -60,7 +61,7 @@ class CodexProvider(LLMProvider):
 
     def __init__(self, model: str = "", effort: str = "low", binary: str = "codex", timeout: float = 240.0):
         self.model = model
-        self.effort = effort if effort in {"minimal", "low", "medium", "high", "xhigh"} else "low"
+        self.effort = effort if effort in CODEX_EFFORTS else "low"
         self.binary = binary or "codex"
         self.timeout = timeout
 

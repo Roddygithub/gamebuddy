@@ -26,7 +26,7 @@ TTS = ["openai", "piper", "espeak", "none"]
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, cfg: Config, tr: Translator, parent=None):
+    def __init__(self, cfg: Config, tr: Translator, parent=None, ai_tab: bool = False):
         super().__init__(parent)
         self.cfg = cfg
         self.tr = tr
@@ -85,8 +85,21 @@ class SettingsDialog(QDialog):
         self.api_key.setEchoMode(QLineEdit.Password)
         self.api_key.setPlaceholderText("leave empty to use the environment variable")
         self.effort = QComboBox()
-        self.effort.addItems(["low", "medium", "high"])
-        self.effort.setCurrentText(cfg.llm.effort)
+
+        def sync_effort():
+            from gamebuddy.llm.catalog import reasoning_levels
+
+            previous = self.effort.currentText() or cfg.llm.effort
+            levels = reasoning_levels(self.provider.currentText(), self.model.text().strip())
+            self.effort.clear()
+            self.effort.addItems(levels)
+            self.effort.setEnabled(bool(levels))
+            if previous in levels:
+                self.effort.setCurrentText(previous)
+
+        self.provider.currentTextChanged.connect(sync_effort)
+        self.model.textChanged.connect(sync_effort)
+        sync_effort()
         self.vision = QCheckBox()
         self.vision.setChecked(cfg.llm.vision)
         self.web = QCheckBox()
@@ -102,11 +115,13 @@ class SettingsDialog(QDialog):
         f.addRow("Model", self.model)
         f.addRow("Base URL", self.base_url)
         f.addRow(tr("onboarding_key"), self.api_key)
-        f.addRow("Effort (Anthropic)", self.effort)
+        f.addRow("Reasoning (Codex / Anthropic)", self.effort)
         f.addRow("Vision", self.vision)
         f.addRow("Web search", self.web)
         f.addRow("Attach game screenshot", self.screenshot)
         tabs.addTab(ai, "AI")
+        if ai_tab:
+            tabs.setCurrentWidget(ai)
 
         # ---- voice -----------------------------------------------------
         voice = QWidget()

@@ -251,3 +251,13 @@ fits within the usable screen, and the layout updates when its screen or
 resolution changes. Set `compact_orb = true` or `false` to override the choice.
 The bundled monochrome symbolic tray icon follows the bar foreground on hosts
 that support symbolic recoloring, including Omarchy.
+
+### Choose AI from the system tray
+
+Right-click Buddy → **AI / reasoning** to see the current selection. For Codex,
+**Model** uses the CLI's local catalogue when available; **Reasoning** offers the
+selected model's advertised levels. Choices persist for subsequent exchanges;
+the menu is disabled while a reply is running. **Other provider / model…** opens
+the AI settings tab for provider, custom model and API access configuration.
+Reasoning controls are offered for Codex and Anthropic; other adapters do not
+send that parameter.
