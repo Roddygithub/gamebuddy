@@ -10,7 +10,7 @@ from importlib.resources import files
 from typing import Any
 
 from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer
-from PySide6.QtGui import QAction, QGuiApplication, QIcon
+from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from gamebuddy import APP_ID
@@ -225,6 +225,9 @@ class GameBuddyApp(QObject):
         icon = QIcon.fromTheme("gamebuddy-symbolic")
         self.tray = QSystemTrayIcon(icon, self)
         menu = QMenu()
+        self._ai_menu = menu.addMenu("IA / raisonnement" if self.tr.language == "fr" else "AI / reasoning")
+        menu.aboutToShow.connect(self._refresh_ai_menu)
+        self._refresh_ai_menu()
         for label, slot in (
             (self.tr("show"), self.toggle_visible),
             (self.tr("hands_free_on"), self.toggle_hands_free),
@@ -243,8 +246,90 @@ class GameBuddyApp(QObject):
         self.tray.activated.connect(
             lambda reason: self.toggle_visible() if reason == QSystemTrayIcon.Trigger else None
         )
-        self.tray.setToolTip(f"GameBuddy — {self.cfg.llm.provider} / {self.cfg.llm.model or 'default'}")
+        self.tray.setToolTip(
+            f"GameBuddy — {self.cfg.llm.provider} / {self.cfg.llm.model or 'default'} / {self.cfg.llm.effort}"
+        )
         self.tray.show()
+
+    def _refresh_ai_menu(self) -> None:
+        from gamebuddy.llm.catalog import codex_models, reasoning_levels
+
+        menu = self._ai_menu
+        menu.clear()
+        fr = self.tr.language == "fr"
+        cfg = self.cfg.llm
+        menu.setEnabled(not self.kin.busy)
+        current = menu.addAction(f"{cfg.provider} / {cfg.model or 'default'} / {cfg.effort}")
+        current.setEnabled(False)
+        if cfg.provider == "codex":
+            models = menu.addMenu("Modèle" if fr else "Model")
+            group = QActionGroup(models)
+            models.addAction(
+                self._ai_choice(
+                    "Défaut Codex" if fr else "Codex default",
+                    not cfg.model,
+                    lambda: self._choose_ai(model=""),
+                    group,
+                )
+            )
+            for item in codex_models():
+                slug = item["slug"]
+                models.addAction(
+                    self._ai_choice(
+                        item.get("display_name") or slug,
+                        cfg.model == slug,
+                        lambda _checked=False, m=slug: self._choose_ai(model=m),
+                        group,
+                    )
+                )
+        levels = reasoning_levels(cfg.provider, cfg.model)
+        if levels:
+            effort_menu = menu.addMenu("Raisonnement" if fr else "Reasoning")
+            group = QActionGroup(effort_menu)
+            for effort in levels:
+                effort_menu.addAction(
+                    self._ai_choice(
+                        effort,
+                        cfg.effort == effort,
+                        lambda _checked=False, e=effort: self._choose_ai(effort=e),
+                        group,
+                    )
+                )
+        menu.addSeparator()
+        menu.addAction("Autre IA / modèle…" if fr else "Other provider / model…", self.open_ai_settings)
+
+    def _ai_choice(self, label, checked, slot, group):
+        action = QAction(label, group)
+        action.setCheckable(True)
+        action.setChecked(checked)
+        group.addAction(action)
+        action.triggered.connect(slot)
+        return action
+
+    def _choose_ai(self, model: str | None = None, effort: str | None = None) -> None:
+        from gamebuddy.llm.catalog import reasoning_levels
+
+        if self.kin.busy:
+            return
+        cfg = self.cfg.llm
+        if model is not None:
+            cfg.model = model
+            levels = reasoning_levels(cfg.provider, model)
+            if levels and cfg.effort not in levels:
+                cfg.effort = levels[0]
+        if effort is not None:
+            if effort not in reasoning_levels(cfg.provider, cfg.model):
+                return
+            cfg.effort = effort
+        save_config(self.cfg)
+        self.kin.reset_provider()
+        if self.coach:
+            self.coach._provider = None
+        self._refresh_ai_menu()
+        self.tray.setToolTip(f"GameBuddy — {cfg.provider} / {cfg.model or 'default'} / {cfg.effort}")
+
+    def open_ai_settings(self) -> None:
+        self.open_settings(ai_tab=True)
 
     # ---- window selection ----------------------------------------------------
     def pick_window(self) -> None:
@@ -495,14 +580,22 @@ class GameBuddyApp(QObject):
             self.widget.raise_()
             self.widget.activateWindow()
 
-    def open_settings(self) -> None:
+    def open_settings(self, ai_tab: bool = False) -> None:
         from gamebuddy.ui.settings import SettingsDialog
 
-        dlg = SettingsDialog(self.cfg, self.tr, self.widget)
+        dlg = (
+            SettingsDialog(self.cfg, self.tr, self.widget, ai_tab=True)
+            if ai_tab
+            else SettingsDialog(self.cfg, self.tr, self.widget)
+        )
         if dlg.exec():
             self.tr.set_language(self.cfg.general.language)
             self.kin.language = self.tr.language
             self.kin.reset_provider()
+            if self.tray:
+                self._refresh_ai_menu()
+                cfg = self.cfg.llm
+                self.tray.setToolTip(f"GameBuddy — {cfg.provider} / {cfg.model or 'default'} / {cfg.effort}")
             if self.coach:
                 self.coach._provider = None
             hands_free = bool(self.listener and self.listener.active)

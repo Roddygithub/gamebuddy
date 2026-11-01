@@ -139,3 +139,51 @@ def test_settings_release_microphones_before_recreating_listener(qapp, monkeypat
     finally:
         gb.widget.close()
         gb.store.close()
+
+
+def test_tray_ai_choice_persists_and_does_not_change_busy_provider(qapp, tmp_path, monkeypatch):
+    import json
+
+    from PySide6.QtWidgets import QMenu, QSystemTrayIcon
+
+    from gamebuddy.config import Config, load_config
+    from gamebuddy.ui.app import GameBuddyApp
+
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path))
+    (tmp_path / "models_cache.json").write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "slug": "test-model",
+                        "visibility": "list",
+                        "supported_reasoning_levels": [{"effort": "low"}, {"effort": "max"}],
+                    }
+                ]
+            }
+        )
+    )
+    cfg = Config()
+    cfg.capture.backend = "none"
+    cfg.llm.provider = "codex"
+    gb = GameBuddyApp(cfg)
+    gb.tray = QSystemTrayIcon(gb)
+    gb._ai_menu = QMenu()
+    try:
+        gb._refresh_ai_menu()
+        gb.kin._provider = object()
+        gb._choose_ai(model="test-model")
+        gb._choose_ai(effort="max")
+        assert load_config().llm.model == "test-model"
+        assert load_config().llm.effort == "max"
+        assert gb.kin._provider is None
+        assert "max" in gb.tray.toolTip()
+        gb.kin.busy = True
+        gb._choose_ai(effort="low")
+        assert cfg.llm.effort == "max"
+        gb._refresh_ai_menu()
+        assert not gb._ai_menu.isEnabled()
+    finally:
+        gb.widget.close()
+        gb._ai_menu.close()
+        gb.store.close()
