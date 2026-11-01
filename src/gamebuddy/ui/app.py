@@ -243,7 +243,7 @@ class GameBuddyApp(QObject):
         self.tray.activated.connect(
             lambda reason: self.toggle_visible() if reason == QSystemTrayIcon.Trigger else None
         )
-        self.tray.setToolTip("GameBuddy")
+        self.tray.setToolTip(f"GameBuddy — {self.cfg.llm.provider} / {self.cfg.llm.model or 'default'}")
         self.tray.show()
 
     # ---- window selection ----------------------------------------------------
@@ -544,6 +544,9 @@ class GameBuddyApp(QObject):
             "coach": bool(self.coach and self.coach.running),
             "busy": self.kin.busy,
             "backend": self.backend.name,
+            "provider": self.cfg.llm.provider,
+            "model": self.cfg.llm.model or "default",
+            "effort": self.cfg.llm.effort,
             "language": self.tr.language,
         }
 

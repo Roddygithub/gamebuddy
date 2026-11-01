@@ -36,6 +36,7 @@ class Avatar(QWidget):
 
     def __init__(self, size: int = 32, parent: QWidget | None = None, animate: bool = True):
         super().__init__(parent)
+        self.setObjectName("buddy-avatar")
         self._size = size
         self._state = "idle"
         self._level = 0.0
