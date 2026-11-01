@@ -64,6 +64,10 @@ class SettingsDialog(QDialog):
         self.auto_update.setCurrentText(cfg.general.auto_update)
         f.addRow("Updates", self.auto_update)
         f.addRow("Push-to-talk (Hyprland)", self.ptt)
+        self.ui_mode = QComboBox()
+        self.ui_mode.addItems(["orb", "panel"])
+        self.ui_mode.setCurrentText(cfg.ui.mode)
+        f.addRow("Start as", self.ui_mode)
         f.addRow("Opacity", self.opacity)
         f.addRow("Font size", self.font_size)
         tabs.addTab(general, "General")
@@ -180,6 +184,7 @@ class SettingsDialog(QDialog):
         c.general.auto_update = self.auto_update.currentText()
         c.hotkeys.push_to_talk = self.ptt.text().strip() or "ALT, V"
         c.ui.opacity = self.opacity.value()
+        c.ui.mode = self.ui_mode.currentText()
         c.ui.font_size = self.font_size.value()
         c.llm.provider = self.provider.currentText()
         c.llm.model = self.model.text().strip()

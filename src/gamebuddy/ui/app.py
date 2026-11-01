@@ -75,6 +75,7 @@ class GameBuddyApp(QObject):
             self.cfg.hotkeys.push_to_talk,
             self.cfg.ui.width,
             self.cfg.ui.height,
+            mode=self.cfg.ui.mode,
         )
         self._apply_theme()
         self._apply_window_flags()
@@ -86,6 +87,7 @@ class GameBuddyApp(QObject):
         app = QApplication.instance()
         if app:
             app.setStyleSheet(stylesheet(colors, self.cfg.ui.font_size, self.cfg.ui.opacity))
+        self.widget.set_theme_colors(colors)
 
     def _apply_window_flags(self) -> None:
         flags = Qt.FramelessWindowHint | Qt.Window
@@ -120,6 +122,7 @@ class GameBuddyApp(QObject):
         b.command.connect(self._handle_command_gui)
         b.window_lost.connect(self._on_window_lost)
         b.memory.connect(lambda _n: w.set_status("ready"))
+        w.mode_changed.connect(self._on_mode_changed)
 
     def _kin_callbacks(self) -> KinCallbacks:
         b = self.bridge
@@ -162,6 +165,9 @@ class GameBuddyApp(QObject):
         self._update_info: dict | None = None
         if self.cfg.general.auto_update != "off" and not os.environ.get("GAMEBUDDY_NO_UPDATE_CHECK"):
             QTimer.singleShot(5000, self._check_update_async)
+
+    def _on_mode_changed(self, mode: str) -> None:
+        self.cfg.ui.mode = mode  # remembered across restarts (saved on quit / settings)
 
     # ---- updates -------------------------------------------------------------
     def _check_update_async(self) -> None:

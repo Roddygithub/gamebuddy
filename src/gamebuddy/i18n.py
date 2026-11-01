@@ -10,6 +10,8 @@ import os
 
 _STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        "orb_mode": "Orb mode (avatar only)",
+        "panel_mode": "Open the panel",
         "update_available": "GameBuddy {version} is available — update from the tray menu or run `gamebuddy update`.",
         "update_now": "Update to {version}",
         "update_started": "Updating… the widget restarts by itself when done.",
@@ -62,6 +64,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Noted for next time.",
     },
     "fr": {
+        "orb_mode": "Mode orbe (avatar seul)",
+        "panel_mode": "Ouvrir le panneau",
         "update_available": "GameBuddy {version} est disponible — mets à jour depuis le menu de la barre ou lance `gamebuddy update`.",
         "update_now": "Mettre à jour vers {version}",
         "update_started": "Mise à jour en cours… le widget redémarre tout seul à la fin.",
@@ -114,6 +118,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Noté pour la prochaine fois.",
     },
     "de": {
+        "orb_mode": "Orb-Modus (nur Avatar)",
+        "panel_mode": "Panel öffnen",
         "update_available": "GameBuddy {version} ist verfügbar — über das Tray-Menü aktualisieren oder `gamebuddy update` ausführen.",
         "update_now": "Auf {version} aktualisieren",
         "update_started": "Aktualisierung läuft… das Widget startet danach von selbst neu.",
@@ -166,6 +172,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Für das nächste Mal notiert.",
     },
     "es": {
+        "orb_mode": "Modo orbe (solo avatar)",
+        "panel_mode": "Abrir el panel",
         "update_available": "GameBuddy {version} está disponible — actualiza desde el menú de la bandeja o ejecuta `gamebuddy update`.",
         "update_now": "Actualizar a {version}",
         "update_started": "Actualizando… el widget se reinicia solo al terminar.",
@@ -218,6 +226,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Anotado para la próxima vez.",
     },
     "it": {
+        "orb_mode": "Modalità orb (solo avatar)",
+        "panel_mode": "Apri il pannello",
         "update_available": "GameBuddy {version} è disponibile — aggiorna dal menu della tray o esegui `gamebuddy update`.",
         "update_now": "Aggiorna a {version}",
         "update_started": "Aggiornamento in corso… il widget si riavvia da solo alla fine.",
@@ -270,6 +280,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Segnato per la prossima volta.",
     },
     "pt-BR": {
+        "orb_mode": "Modo orbe (só o avatar)",
+        "panel_mode": "Abrir o painel",
         "update_available": "GameBuddy {version} está disponível — atualize pelo menu da bandeja ou rode `gamebuddy update`.",
         "update_now": "Atualizar para {version}",
         "update_started": "Atualizando… o widget reinicia sozinho ao terminar.",

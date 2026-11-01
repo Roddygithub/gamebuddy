@@ -1,11 +1,11 @@
-"""The widget itself: header, pinned panel, transcript, input."""
+"""The widget itself: orb (avatar + caption) or panel (header, pinned content, transcript, input)."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
 from PySide6.QtCore import QPoint, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QTextDocument
+from PySide6.QtGui import QAction, QRegion, QTextDocument
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -22,6 +22,17 @@ from PySide6.QtWidgets import (
 )
 
 from gamebuddy.i18n import Translator
+from gamebuddy.ui.avatar import Avatar
+
+ORB_W, ORB_H = 260, 96
+CAPTION_MAX = 140
+CAPTION_FADE_MS = 9000
+
+
+def _plain(markdown: str) -> str:
+    doc = QTextDocument()
+    doc.setMarkdown(markdown)
+    return doc.toPlainText()
 
 
 def md_to_html(markdown: str) -> str:
@@ -82,9 +93,16 @@ class BuddyWidget(QWidget):
     quit_requested = Signal()
     hide_requested = Signal()
     new_conversation = Signal()
+    mode_changed = Signal(str)  # "orb" | "panel"
+    _orb_signal = Signal()
 
-    def __init__(self, tr: Translator, assistant_name: str, ptt_key: str, width: int, height: int):
+    def __init__(
+        self, tr: Translator, assistant_name: str, ptt_key: str, width: int, height: int, mode: str = "orb"
+    ):
         super().__init__()
+        self._mode = "panel"
+        self._panel_size = (width, height)
+        self._orb_signal.connect(lambda: self.set_mode("orb"))
         self.tr = tr
         self.assistant_name = assistant_name
         self.ptt_key = ptt_key
@@ -102,20 +120,49 @@ class BuddyWidget(QWidget):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+        outer.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.root = QWidget()
         self.root.setObjectName("root")
         outer.addWidget(self.root)
+
+        # ---- orb (avatar + last words), the in-game default ---------------
+        self.orb_root = QWidget()
+        self.orb_root.setObjectName("orb")
+        self.orb_root.setFixedSize(ORB_W, ORB_H)
+        orb_layout = QHBoxLayout(self.orb_root)
+        orb_layout.setContentsMargins(10, 8, 12, 8)
+        orb_layout.setSpacing(10)
+        self.orb_avatar = Avatar(64)
+        self.orb_avatar.setToolTip(tr("panel_mode"))
+        self.orb_avatar.clicked.connect(lambda: self.set_mode("panel"))
+        self.caption = QLabel("")
+        self.caption.setObjectName("caption")
+        self.caption.setWordWrap(True)
+        self.caption.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.caption.setTextFormat(Qt.PlainText)
+        orb_layout.addWidget(self.orb_avatar)
+        orb_layout.addWidget(self.caption, 1)
+        self.orb_root.hide()
+        outer.addWidget(self.orb_root)
+        self._caption_timer = QTimer(self)
+        self._caption_timer.setSingleShot(True)
+        self._caption_timer.setInterval(CAPTION_FADE_MS)
+        self._caption_timer.timeout.connect(lambda: self.caption.setText(""))
         layout = QVBoxLayout(self.root)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(8)
 
         # ---- header ----------------------------------------------------
         header = QHBoxLayout()
-        self.dot = QLabel("●")
-        self.dot.setObjectName("dot")
+        self.avatar = Avatar(30)
+        self.avatar.setToolTip(tr("orb_mode"))
+        self.avatar.clicked.connect(lambda: self.set_mode("orb"))
+        self.dot = self.avatar  # backwards-compatible name
         self.title = QLabel(assistant_name)
         self.title.setObjectName("title")
+        self.title.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         self.status = QLabel(tr("ready"))
+        self.status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.status.setObjectName("status")
         header.addWidget(self.dot)
         header.addWidget(self.title)
@@ -126,7 +173,13 @@ class BuddyWidget(QWidget):
         self.btn_coach = self._tool("🧠", tr("coach_on"), self.toggle_coach.emit, checkable=True)
         self.btn_compact = self._tool("▾", tr("compact"), self.toggle_compact)
         self.btn_menu = self._tool("⋯", tr("settings"), self._show_menu)
-        for b in (self.btn_window, self.btn_ear, self.btn_coach, self.btn_compact, self.btn_menu):
+        for b in (
+            self.btn_window,
+            self.btn_ear,
+            self.btn_coach,
+            self.btn_compact,
+            self.btn_menu,
+        ):
             header.addWidget(b)
         layout.addLayout(header)
 
@@ -142,7 +195,6 @@ class BuddyWidget(QWidget):
         pin_head = QHBoxLayout()
         self.pin_title = QLabel("")
         self.pin_title.setObjectName("title")
-        pin_head.addWidget(QLabel("📌"))
         pin_head.addWidget(self.pin_title, 1)
         self.btn_pin_toggle = self._tool("▾", "", self._toggle_pin_body)
         pin_head.addWidget(self.btn_pin_toggle)
@@ -191,6 +243,50 @@ class BuddyWidget(QWidget):
 
         self._body_widgets = [self.hint, self.pin_frame, self.scroll, self.level]
         self._input_row = row
+        if mode == "orb":
+            self.set_mode("orb")
+
+    # ---- orb / panel ---------------------------------------------------------
+    @property
+    def mode(self) -> str:
+        return self._mode
+
+    def set_mode(self, mode: str) -> None:
+        mode = "orb" if mode == "orb" else "panel"
+        if mode == self._mode:
+            return
+        self._mode = mode
+        top_right = self.frameGeometry().topRight()
+        if mode == "orb":
+            self._panel_size = (self.width(), self.height())
+            self.root.hide()
+            self.orb_root.show()
+            self.setMinimumSize(ORB_W, ORB_H)
+            self.resize(ORB_W, ORB_H)
+            self.setMask(QRegion(0, 0, ORB_W, ORB_H))  # clicks outside the orb reach the game
+        else:
+            self.orb_root.hide()
+            self.root.show()
+            self.clearMask()
+            self.setMinimumSize(300, 160)
+            self.resize(*self._panel_size)
+            self.caption.setText("")
+        if self.isVisible():  # keep the right edge where it was
+            self.move(max(0, top_right.x() - self.width()), self.frameGeometry().top())
+        self.mode_changed.emit(mode)
+
+    def set_caption(self, text: str, fade: bool = True) -> None:
+        text = " ".join(text.split())
+        if len(text) > CAPTION_MAX:
+            text = text[: CAPTION_MAX - 1].rstrip() + "…"
+        self.caption.setText(text)
+        self._caption_timer.stop()
+        if fade and text:
+            self._caption_timer.start()
+
+    def set_theme_colors(self, colors: dict[str, str]) -> None:
+        self.avatar.set_colors(colors)
+        self.orb_avatar.set_colors(colors)
 
     # ---- helpers -----------------------------------------------------------
     def _tool(self, text: str, tip: str, slot: Callable[[], None], checkable: bool = False) -> QToolButton:
@@ -208,6 +304,7 @@ class BuddyWidget(QWidget):
     def _show_menu(self) -> None:
         menu = QMenu(self)
         for label, sig in (
+            (self.tr("orb_mode"), self._orb_signal),
             (self.tr("settings"), self.open_settings),
             (self.tr("pick_window"), self.pick_window),
             ("—", None),
@@ -258,7 +355,11 @@ class BuddyWidget(QWidget):
             "speaking": "#8b5cf6",
             "searching": "#f59e0b",
         }.get(key, "#22c55e")
-        self.dot.setStyleSheet(f"color: {color}; font-size: 17px;")
+        self.status.setStyleSheet(f"color: {color};" if key != "ready" else "")
+        self.avatar.set_status(key)
+        self.orb_avatar.set_status(key)
+        if self._mode == "orb" and key in ("listening", "transcribing", "thinking", "searching"):
+            self.set_caption(self.tr(key), fade=False)
 
     def set_window_title(self, title: str | None) -> None:
         self.hint.setText(
@@ -269,6 +370,8 @@ class BuddyWidget(QWidget):
 
     def set_level(self, value: float) -> None:
         self.level.setValue(int(min(1.0, value * 8) * 100))
+        self.avatar.set_level(value)
+        self.orb_avatar.set_level(value)
 
     def set_hands_free(self, on: bool) -> None:
         self.btn_ear.setChecked(on)
@@ -291,6 +394,8 @@ class BuddyWidget(QWidget):
         self.pin_body.setFixedHeight(int(min(220, self.pin_body.document().size().height() + 12)))
         self.pin_body.setVisible(True)
         self.btn_pin_toggle.setText("▾")
+        if self._mode == "orb":
+            self.set_mode("panel")  # pinned content is meant to stay visible next to the game
         if not self._compact:
             self.pin_frame.show()
 
@@ -310,6 +415,8 @@ class BuddyWidget(QWidget):
         label.setText(md_to_html(text) if kind != "user" else text)
         self.feed_layout.insertWidget(self.feed_layout.count() - 1, label)
         QTimer.singleShot(0, self._scroll_bottom)
+        if self._mode == "orb" and kind != "user":
+            self.set_caption(_plain(text))
         return label
 
     def add_user(self, text: str) -> None:
@@ -335,6 +442,8 @@ class BuddyWidget(QWidget):
         assert self._streaming_label is not None
         self._streaming_label.setText(md_to_html(self._streaming_text))
         self._scroll_bottom()
+        if self._mode == "orb":
+            self.set_caption(_plain(self._streaming_text), fade=False)
 
     def end_stream(self, final_text: str) -> None:
         if self._streaming_label is not None:
@@ -345,6 +454,8 @@ class BuddyWidget(QWidget):
         self._streaming_label = None
         self._streaming_text = ""
         self._scroll_bottom()
+        if self._mode == "orb" and final_text.strip():
+            self.set_caption(_plain(final_text))
 
     def clear_feed(self) -> None:
         while self.feed_layout.count() > 1:
@@ -358,7 +469,7 @@ class BuddyWidget(QWidget):
 
     # ---- window move -------------------------------------------------------
     def mousePressEvent(self, event):  # noqa: N802
-        if event.button() == Qt.LeftButton and event.position().y() < 48:
+        if event.button() == Qt.LeftButton and (event.position().y() < 48 or self._mode == "orb"):
             handle = self.windowHandle()
             if handle is not None and handle.startSystemMove():
                 return

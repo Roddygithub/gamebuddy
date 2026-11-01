@@ -5,7 +5,7 @@ Reste dans ton jeu, parle à Buddy. Un compagnon IA vocal pour Wayland, Hyprland
 
 <p align="center"><a href="README.md">🇬🇧 English version</a></p>
 
-<p align="center"><img src="docs/assets/widget-fr.png" alt="Widget GameBuddy" width="420"></p>
+<p align="center"><img src="docs/assets/orb-fr.png" alt="Widget GameBuddy" width="420"></p>
 
 GameBuddy, c'est **Buddy** : un assistant IA qui vit dans un petit widget à côté de ton jeu.
 Tu maintiens une touche et tu parles ; Buddy voit la fenêtre de jeu que tu as choisie,
@@ -15,6 +15,16 @@ seulement** : il n'injecte jamais d'entrées, ne lit pas la mémoire du jeu et n
 
 Tout tourne en local, sauf les appels IA que tu configures (ta propre clé, ou un modèle
 local via Ollama).
+
+## Ce qu'on voit en jeu
+
+Par défaut, Buddy n'est qu'un **orbe** : son visage animé et ses derniers mots, rien d'autre. Il
+cligne des yeux au repos, pulse quand il écoute, fait tourner des points quand il réfléchit et bouge
+la bouche quand il parle. Les clics hors de l'orbe vont au jeu. Un clic sur le visage (ou une
+checklist qu'il épingle) ouvre le panneau complet : contenu épinglé, conversation, saisie texte.
+`mode = "panel"` dans `[ui]` démarre directement avec le panneau.
+
+<p align="center"><img src="docs/assets/widget-fr.png" width="360" alt="Panneau GameBuddy avec une checklist épinglée"></p>
 
 ## Fonctionnalités
 

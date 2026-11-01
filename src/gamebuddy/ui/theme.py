@@ -60,7 +60,8 @@ def stylesheet(c: dict[str, str], font_size: int = 13, opacity: float = 0.94) ->
     QLabel#title {{ font-weight: 600; font-size: {font_size + 2}px; }}
     QLabel#status {{ color: {c["muted"]}; }}
     QLabel#hint {{ color: {c["muted"]}; font-size: {font_size - 2}px; }}
-    QLabel#dot {{ color: {c["accent2"]}; font-size: {font_size + 4}px; }}
+    QWidget#orb {{ background: rgba({r},{g},{b},{opacity}); border-radius: 48px; border: 1px solid rgba(255,255,255,0.06); }}
+    QLabel#caption {{ color: {c["text"]}; font-size: {font_size}px; }}
     QLabel#bubble_user {{ background: {c["user"]}; border-radius: 10px; padding: 8px 10px; }}
     QLabel#bubble_bro {{ background: {c["bro"]}; border-radius: 10px; padding: 8px 10px; }}
     QLabel#bubble_coach {{ background: {c["panel2"]}; border-left: 3px solid {c["accent2"]}; border-radius: 6px; padding: 8px 10px; }}
@@ -68,6 +69,7 @@ def stylesheet(c: dict[str, str], font_size: int = 13, opacity: float = 0.94) ->
     QFrame#pin {{ background: {c["panel"]}; border-radius: 10px; border: 1px solid {c["accent"]}; }}
     QTextBrowser {{ background: transparent; border: none; }}
     QScrollArea {{ background: transparent; border: none; }}
+    QScrollArea > QWidget > QWidget {{ background: transparent; }}
     QScrollBar:vertical {{ width: 6px; background: transparent; }}
     QScrollBar::handle:vertical {{ background: rgba(255,255,255,0.18); border-radius: 3px; min-height: 24px; }}
     QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}

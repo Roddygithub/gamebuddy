@@ -9,7 +9,7 @@ Stay in your game, talk to Buddy. A voice-first AI companion widget for Wayland,
   <a href="README.fr.md">🇫🇷 Version française</a>
 </p>
 
-<p align="center"><img src="docs/assets/widget-fr.png" alt="GameBuddy widget" width="420"></p>
+<p align="center"><img src="docs/assets/orb-fr.png" alt="GameBuddy widget" width="420"></p>
 
 GameBuddy is an AI companion named **Buddy** that lives in one small widget next to your game.
 Hold a key and talk; Buddy can see the game window you selected, search the web,
@@ -19,6 +19,16 @@ reads game memory, or plays for you.
 
 Everything runs locally except the AI calls you configure (bring your own key, or a
 local model through Ollama).
+
+## What you see in game
+
+By default Buddy is just an **orb**: his animated face and his last words, nothing else. He blinks
+while idle, pulses while listening, spins dots while thinking and moves his mouth while speaking.
+Clicks outside the orb go to the game. Click the face (or let him pin a checklist) and the full
+panel opens: pinned content, transcript, text input. Set `mode = "panel"` under `[ui]` to start
+with the panel instead.
+
+<p align="center"><img src="docs/assets/widget-fr.png" width="360" alt="GameBuddy panel with a pinned checklist"></p>
 
 ## Features
 

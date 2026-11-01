@@ -60,6 +60,10 @@ def hyprland_version() -> tuple[int, int] | None:
 def hyprland_config(syntax: str = "auto") -> str:
     cfg = load_config()
     w, h = cfg.ui.width, cfg.ui.height
+    if cfg.ui.mode == "orb":
+        from gamebuddy.ui.widget import ORB_H, ORB_W
+
+        w, h = ORB_W, ORB_H  # the panel resizes itself when opened (floating windows may do so)
     if syntax == "auto":
         v = hyprland_version()
         syntax = "legacy" if v is None or v < (0, 53) else ("v053" if v < (0, 55) else "lua")

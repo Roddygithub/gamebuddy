@@ -114,6 +114,7 @@ class UIConfig:
     start_hidden: bool = False
     font_size: int = 13
     theme: str = "dark"  # dark | omarchy (reads ~/.config/omarchy/current/theme colors if present)
+    mode: str = "orb"  # orb (avatar + last words, click to open) | panel (full chat window)
 
 
 @dataclass

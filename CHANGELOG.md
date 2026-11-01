@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- **Buddy has a face.** Vector avatar (no image assets) with four animated states: idle (blinks), listening (ring pulses with the mic level), thinking (orbiting dots), speaking (mouth moves). Colors follow the theme / Omarchy palette.
+- **Orb mode is the new in-game default**: only the avatar and his last words (a caption that fades after a few seconds) stay on screen; clicks outside the orb reach the game. Click the avatar to open the full panel; pinned content opens it automatically; `ui.mode = "panel"` restores the old behaviour. `gamebuddy hyprland-config` sizes the window for the configured start mode.
+
 ## 0.2.1
 
 - Self-update: `gamebuddy update` fetches the latest GitHub release tag into the install source and re-runs `install.sh`, then restarts the widget. A daily systemd user timer (`gamebuddy-update.timer`) checks for releases; `general.auto_update` = `notify` (default: bubble + tray action "Update to X") | `auto` (the timer installs it) | `off`.
