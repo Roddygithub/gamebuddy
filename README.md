@@ -27,7 +27,7 @@ local model through Ollama).
 - **Search and knowledge** — web search + page reading for patch notes, meta, builds; model knowledge for strategy.
 - **Continuous conversation** — the thread persists across restarts; long-term notes live in a local SQLite database.
 - **Pinned content** — builds, checklists, tables, links or video URLs stay visible until you replace or remove them.
-- **Spoken replies** — OpenAI TTS, [piper](https://github.com/rhasspy/piper) or espeak-ng; speech-to-text through OpenAI, faster-whisper (offline) or whisper.cpp.
+- **Spoken replies** — OpenAI TTS, [piper](https://github.com/rhasspy/piper) or espeak-ng; speech-to-text through OpenAI, [voxtype](https://github.com/peteonrails/voxtype) (Omarchy's dictation tool, GPU builds), faster-whisper (offline) or whisper.cpp.
 - **Coach mode (opt-in, experimental)** — periodic observation with a cautious grounding gate; silent unless a long-lived decision window is clearly visible. See [docs/COACH-MODE.md](docs/COACH-MODE.md).
 - **Multilingual** — UI in French, English, German, Spanish, Italian, Brazilian and European Portuguese; Bro answers in whatever language you speak.
 - **Providers** — a ChatGPT Plus/Pro subscription (via the Codex CLI, no API key), Anthropic Claude, OpenAI, Ollama, or any OpenAI-compatible endpoint (LM Studio, OpenRouter, Mistral…).
@@ -48,8 +48,8 @@ Then choose the `codex` provider in the onboarding wizard or set `provider = "co
 sandbox, no session files); pinning, memory and web search still work through an
 "actions" envelope that GameBro executes. Trade-offs: a few seconds of extra latency per
 answer, no token streaming, and no speech API — voice falls back to local engines
-(faster-whisper for transcription, piper or espeak-ng for speech), which `./install.sh`
-installs by default. `gamebro doctor` tells you whether Codex is installed and signed in.
+(voxtype if Omarchy's dictation tool is installed, else faster-whisper, for transcription;
+piper or espeak-ng for speech), which `./install.sh` installs by default. `gamebro doctor` tells you whether Codex is installed and signed in.
 
 ## Quick start (Arch Linux / Omarchy)
 
@@ -127,7 +127,7 @@ effort = "low"             # anthropic / codex: low keeps answers fast and cheap
 api_key = ""               # or ANTHROPIC_API_KEY / OPENAI_API_KEY in the environment
 
 [speech]
-stt = "faster_whisper"     # openai | faster_whisper | whispercpp | none
+stt = "voxtype"            # openai | voxtype | faster_whisper | whispercpp | none
 tts = "espeak"             # openai | piper | espeak | none
 speak_replies = true
 
@@ -136,6 +136,10 @@ enabled = false
 interval_s = 4.0
 model = ""                 # cheap default per provider (claude-haiku-5-5 / gpt-4o-mini)
 ```
+
+`voxtype` reuses Omarchy's dictation stack (*Install > AI > Dictation*, or `yay -S voxtype`):
+same Whisper models as faster-whisper, but with its Vulkan/ROCm GPU builds and the model you
+already downloaded. Leave `stt_model` empty to use voxtype's own config.
 
 Local, offline setup: `provider = "ollama"`, `model = "llama3.2-vision"`, `stt = "faster_whisper"` (`pip install 'gamebro[local]'`), `tts = "piper"`.
 

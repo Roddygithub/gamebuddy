@@ -126,6 +126,19 @@ def doctor() -> int:
                 "set" if cfg.openai_key() else "missing (use piper/espeak + faster_whisper)",
             )
         )
+    elif cfg.speech.stt == "voxtype":
+        from gamebro.speech.stt import voxtype_available
+
+        has_vox = voxtype_available(cfg.speech.voxtype_binary)
+        rows.append(
+            (
+                "voxtype",
+                has_vox,
+                "offline speech-to-text via Omarchy's dictation tool"
+                if has_vox
+                else "Omarchy: Install > AI > Dictation (or `yay -S voxtype`)",
+            )
+        )
     else:
         try:
             import faster_whisper  # noqa: F401

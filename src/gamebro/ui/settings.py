@@ -21,7 +21,7 @@ from gamebro.config import SUPPORTED_LANGUAGES, Config, save_config
 from gamebro.i18n import Translator, language_display_name
 
 PROVIDERS = ["codex", "anthropic", "openai", "ollama", "openai_compatible"]
-STT = ["openai", "faster_whisper", "whispercpp", "none"]
+STT = ["openai", "voxtype", "faster_whisper", "whispercpp", "none"]
 TTS = ["openai", "piper", "espeak", "none"]
 
 
@@ -122,6 +122,12 @@ class SettingsDialog(QDialog):
         self.vad.setValue(cfg.audio.vad_threshold)
         f.addRow("Speech to text", self.stt)
         f.addRow("STT model", self.stt_model)
+        stt_note = QLabel(
+            "voxtype: Omarchy's dictation tool (Install > AI > Dictation) — reuses its Whisper/Parakeet model "
+            "and GPU build. STT model is left empty to use voxtype's own config."
+        )
+        stt_note.setWordWrap(True)
+        f.addRow(stt_note)
         f.addRow("Text to speech", self.tts)
         f.addRow("TTS voice", self.tts_voice)
         f.addRow("Piper model path", self.piper_model)
@@ -180,6 +186,8 @@ class SettingsDialog(QDialog):
         c.capture.attach_screenshot = self.screenshot.isChecked()
         c.speech.stt = self.stt.currentText()
         c.speech.stt_model = self.stt_model.text().strip()
+        if c.speech.stt == "voxtype":
+            c.speech.voxtype_model = c.speech.stt_model
         c.speech.tts = self.tts.currentText()
         c.speech.tts_voice = self.tts_voice.text().strip()
         c.speech.piper_model = self.piper_model.text().strip()

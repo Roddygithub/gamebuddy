@@ -23,7 +23,7 @@ local via Ollama).
 - **Recherche et connaissances** — recherche web + lecture de pages pour patch notes, méta, builds ; connaissances du modèle pour la stratégie.
 - **Conversation continue** — le fil survit aux redémarrages ; la mémoire longue durée est une base SQLite locale.
 - **Contenu épinglé** — builds, checklists, tableaux, liens ou vidéos restent visibles jusqu'à remplacement.
-- **Réponses parlées** — TTS OpenAI, piper ou espeak-ng ; transcription OpenAI, faster-whisper (hors ligne) ou whisper.cpp.
+- **Réponses parlées** — TTS OpenAI, piper ou espeak-ng ; transcription OpenAI, [voxtype](https://github.com/peteonrails/voxtype) (l'outil de dictée d'Omarchy, builds GPU), faster-whisper (hors ligne) ou whisper.cpp.
 - **Mode coach (optionnel, expérimental)** — observation périodique avec une porte de validation prudente : silence tant qu'une fenêtre de décision lente n'est pas clairement visible. Voir [docs/COACH-MODE.md](docs/COACH-MODE.md).
 - **Multilingue** — interface en français, anglais, allemand, espagnol, italien, portugais (BR/PT) ; Bro répond dans la langue que tu parles.
 - **Fournisseurs** — un abonnement ChatGPT Plus/Pro (via le Codex CLI, sans clé API), Anthropic Claude, OpenAI, Ollama, ou tout endpoint compatible OpenAI.
@@ -44,7 +44,8 @@ Choisis ensuite le fournisseur `codex` dans l'assistant de démarrage, ou mets
 (prompt + capture, bac à sable lecture seule, aucune session écrite) ; épinglage, mémoire et
 recherche web passent par une enveloppe « actions » que GameBro exécute. Contreparties :
 quelques secondes de latence en plus, pas de streaming, et pas d'API vocale — la voix bascule
-sur des moteurs locaux (faster-whisper pour la transcription, piper ou espeak-ng pour la
+sur des moteurs locaux (voxtype si l'outil de dictée d'Omarchy est installé, sinon faster-whisper, pour la
+transcription ; piper ou espeak-ng pour la
 synthèse), installés par défaut par `./install.sh`. `gamebro doctor` indique si Codex est
 installé et connecté.
 
@@ -108,13 +109,17 @@ model = ""                 # défaut Codex ; ex. "claude-opus-5-5" pour anthropi
 effort = "low"             # anthropic / codex : réponses rapides et peu coûteuses en jeu
 
 [speech]
-stt = "faster_whisper"     # openai | faster_whisper | whispercpp | none
+stt = "voxtype"            # openai | voxtype | faster_whisper | whispercpp | none
 tts = "espeak"             # openai | piper | espeak | none
 
 [coach]
 enabled = false
 model = ""                 # modèle économique par défaut (claude-haiku-5-5 / gpt-4o-mini)
 ```
+
+`voxtype` réutilise la pile de dictée d'Omarchy (*Install > AI > Dictation*, ou `yay -S voxtype`) :
+mêmes modèles Whisper que faster-whisper, mais avec ses builds GPU Vulkan/ROCm et le modèle déjà
+téléchargé. Laisser `stt_model` vide pour utiliser la config de voxtype.
 
 Configuration 100 % locale : `provider = "ollama"`, `model = "llama3.2-vision"`,
 `stt = "faster_whisper"` (`pip install 'gamebro[local]'`), `tts = "piper"`.

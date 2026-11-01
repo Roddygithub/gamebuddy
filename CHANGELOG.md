@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- New STT engine `voxtype`: reuses Omarchy's dictation tool (`voxtype transcribe`), its model and GPU build. Picked automatically at onboarding when installed; `gamebro doctor` reports it.
+
 ## 0.1.1 — 2026-11-01
 
 - `codex` provider: run on a ChatGPT Plus/Pro subscription through the OpenAI Codex CLI (no API key); actions envelope for pin/memory/search; friendly errors; `gamebro doctor` checks the CLI and login.

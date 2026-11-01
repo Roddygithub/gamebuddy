@@ -59,11 +59,13 @@ class LLMConfig:
 
 @dataclass
 class SpeechConfig:
-    stt: str = "openai"  # openai | faster_whisper | whispercpp | none
+    stt: str = "openai"  # openai | voxtype | faster_whisper | whispercpp | none
     stt_model: str = "whisper-1"
     stt_language: str = ""  # "" = auto-detect
     whispercpp_binary: str = "whisper-cli"
     whispercpp_model: str = ""
+    voxtype_binary: str = "voxtype"  # Omarchy dictation tool; reuses its model + GPU build
+    voxtype_model: str = ""  # "" = voxtype's own config
     tts: str = "openai"  # openai | piper | espeak | none
     tts_model: str = "tts-1"
     tts_voice: str = "alloy"

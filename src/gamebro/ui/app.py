@@ -32,6 +32,9 @@ _FRIENDLY = {
     "codex_not_installed": "Codex CLI not found — install it with `npm install -g @openai/codex` and run `codex login`.",
     "codex_not_logged_in": "Codex is not signed in — run `codex login` in a terminal (ChatGPT Plus/Pro account).",
     "codex_timeout": "Codex took too long to answer — try again or lower the reasoning effort in Settings.",
+    "voxtype_not_installed": "voxtype not found — install it (Omarchy: Install > AI > Dictation) or pick another STT engine in Settings.",
+    "voxtype_no_model": "voxtype has no model yet — run `voxtype setup --download` once.",
+    "voxtype_timeout": "voxtype took too long to transcribe — try a smaller model (`voxtype setup`).",
     "missing_api_key": "No API key configured — open Settings, or choose the `codex` provider (ChatGPT Plus).",
 }
 

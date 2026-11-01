@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from gamebro.capture import CaptureBackend, WindowInfo
 from gamebro.config import SUPPORTED_LANGUAGES, Config, save_config
 from gamebro.i18n import Translator, language_display_name
+from gamebro.speech.stt import voxtype_available
 from gamebro.ui.settings import PROVIDERS
 
 DEFAULT_MODELS = {
@@ -196,8 +197,9 @@ class OnboardingWizard(QWizard):
             if c.llm.provider == "openai" and not c.llm.api_key:
                 c.llm.api_key = self.openai_key.text().strip()
         if not os.environ.get("OPENAI_API_KEY") and not (c.llm.provider == "openai"):
-            # No OpenAI key at all: pick offline-friendly speech engines.
-            c.speech.stt = "faster_whisper" if c.speech.stt == "openai" else c.speech.stt
+            # No OpenAI key at all: pick offline-friendly speech engines (voxtype when Omarchy ships it).
+            if c.speech.stt == "openai":
+                c.speech.stt = "voxtype" if voxtype_available(c.speech.voxtype_binary) else "faster_whisper"
             c.speech.tts = "espeak" if c.speech.tts == "openai" else c.speech.tts
         item = self.windows.currentItem()
         if item is not None and item.data(0x0100):
