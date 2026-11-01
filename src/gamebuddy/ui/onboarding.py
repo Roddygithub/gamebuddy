@@ -28,7 +28,7 @@ DEFAULT_MODELS = {
     "codex": "",
     "anthropic": "claude-opus-5-5",
     "openai": "gpt-4o",
-    "ollama": "llama3.2-vision",
+    "ollama": "qwen3-vl",
     "openai_compatible": "",
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- **GNOME and KDE Wayland get game vision**: new `portal` capture backend (whole screen) through `spectacle`, `gnome-screenshot` or the `org.freedesktop.portal.Screenshot` D-Bus portal (jeepney). Picked automatically from `XDG_CURRENT_DESKTOP`; `gamebuddy doctor` shows which backend is in use.
+- **sway**: `gamebuddy sway-config` prints the `for_window` rule and push-to-talk/toggle `bindsym`s; `install.sh` writes and includes `~/.config/sway/gamebuddy.conf`.
+- **Installer** handles apt, dnf and zypper besides pacman, and warns when `python3` is older than 3.11.
+- **Ollama**: models without tool support no longer break a question (GameBuddy retries without tools); the suggested local model is now `qwen3-vl` (vision + tools).
+
 ## 0.3.0
 
 - **Buddy has a face.** Vector avatar (no image assets) with four animated states: idle (blinks), listening (ring pulses with the mic level), thinking (orbiting dots), speaking (mouth moves). Colors follow the theme / Omarchy palette.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gamebuddy"
-version = "0.3.0"
+version = "0.3.1"
 description = "Voice-first AI gaming companion for Linux (Wayland/Hyprland/Omarchy). Talk to Buddy while you play."
 readme = "README.md"
 license = { text = "MIT" }
@@ -27,6 +27,7 @@ dependencies = [
   "ddgs>=9.0",
   "pillow>=10",
   "tomli-w>=1.0",
+  "jeepney>=0.8; sys_platform == 'linux'",
 ]
 
 [project.optional-dependencies]

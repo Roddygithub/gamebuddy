@@ -39,6 +39,13 @@ HYPR_RULES_LUA = """-- GameBuddy — floating, pinned overlay (Hyprland >= 0.55,
 hl.window_rule({{ match = {{ class = "^(gamebuddy)$" }}, float = true, pin = true,
   size = "{w} {h}", move = "100%-{wplus} 60", border_size = 0, no_shadow = true, no_initial_focus = true }})
 """
+SWAY_RULES = """# GameBuddy — floating, sticky overlay (sway)
+for_window [app_id="gamebuddy"] floating enable, sticky enable, border none, resize set {w} {h}
+# GameBuddy — push-to-talk (hold) and widget toggle
+bindsym --no-repeat {ptt} exec gamebuddy ptt start
+bindsym --release {ptt} exec gamebuddy ptt stop
+bindsym {toggle} exec gamebuddy toggle
+"""
 HYPR_BINDS = """# GameBuddy — push-to-talk (hold) and widget toggle
 bind = {ptt}, exec, gamebuddy ptt start
 bindr = {ptt}, exec, gamebuddy ptt stop
@@ -77,6 +84,28 @@ def hyprland_config(syntax: str = "auto") -> str:
     return text + "\n" + binds
 
 
+_SWAY_MODS = {"SUPER": "Mod4", "ALT": "Mod1", "CTRL": "Control", "CONTROL": "Control", "SHIFT": "Shift"}
+
+
+def sway_key(hypr_bind: str) -> str:
+    """'ALT, V' → 'Mod1+v'; 'SUPER SHIFT, B' → 'Mod4+Shift+b'."""
+    mods, _, key = hypr_bind.partition(",")
+    parts = [_SWAY_MODS.get(m.upper(), m) for m in mods.replace("+", " ").split()]
+    return "+".join(parts + [key.strip().lower() or "v"])
+
+
+def sway_config() -> str:
+    cfg = load_config()
+    w, h = cfg.ui.width, cfg.ui.height
+    if cfg.ui.mode == "orb":
+        from gamebuddy.ui.widget import ORB_H, ORB_W
+
+        w, h = ORB_W, ORB_H
+    return SWAY_RULES.format(
+        w=w, h=h, ptt=sway_key(cfg.hotkeys.push_to_talk), toggle=sway_key(cfg.hotkeys.toggle_widget)
+    )
+
+
 def doctor() -> int:
     cfg = load_config()
     rows: list[tuple[str, bool, str]] = []
@@ -88,12 +117,31 @@ def doctor() -> int:
         else os.environ.get("XDG_SESSION_TYPE", "?")
     )
     rows.append(("session", True, session))
+    from gamebuddy.capture.base import detect_session
+
+    kind = detect_session() if cfg.capture.backend in ("", "auto") else cfg.capture.backend
+    rows.append(
+        (
+            "capture backend",
+            kind not in ("none",),
+            {
+                "hyprland": "window capture (hyprctl + grim)",
+                "sway": "window capture (swaymsg + grim)",
+                "wlroots": "whole screen (grim) — no window list on this compositor",
+                "portal": "whole screen via spectacle / gnome-screenshot / xdg portal (GNOME, KDE)",
+                "x11": "window capture (wmctrl + ImageMagick)",
+                "macos": "dev only",
+            }.get(kind, kind),
+        )
+    )
     for tool, why in (
         ("hyprctl", "window list on Hyprland"),
         ("grim", "Wayland screenshots"),
         ("swaymsg", "window list on sway"),
         ("wmctrl", "window list on X11"),
         ("import", "X11 screenshots (ImageMagick)"),
+        ("spectacle", "KDE Wayland screenshots"),
+        ("gnome-screenshot", "GNOME Wayland screenshots"),
         ("pw-play", "audio playback fallback"),
         ("espeak-ng", "offline TTS"),
         ("piper", "neural offline TTS"),
@@ -221,6 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         "--respect-policy", action="store_true", help='install only when general.auto_update = "auto"'
     )
     hc = sub.add_parser("hyprland-config", help="print Hyprland rules + binds")
+    sub.add_parser("sway-config", help="print sway for_window rule + bindsyms")
     hc.add_argument("--syntax", choices=["auto", "legacy", "v053", "lua"], default="auto")
     cfgp = sub.add_parser("config", help="config file helpers")
     cfgp.add_argument("action", choices=["path", "show", "init", "edit"], nargs="?", default="path")
@@ -299,6 +348,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
     if cmd == "hyprland-config":
         print(hyprland_config(args.syntax))
+        return 0
+    if cmd == "sway-config":
+        print(sway_config())
         return 0
     if cmd == "config":
         path = config_file()

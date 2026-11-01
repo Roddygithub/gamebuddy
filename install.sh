@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# GameBuddy installer for Arch Linux / Omarchy (user-level, no root except pacman).
+# GameBuddy installer (user-level; root only for the distro package manager).
+# Arch/Omarchy (pacman), Debian/Ubuntu (apt), Fedora (dnf), openSUSE (zypper); Hyprland and sway snippets.
 #   ./install.sh            install or update
 #   ./install.sh uninstall  remove what this script owns
 set -euo pipefail
@@ -9,6 +10,8 @@ VENV="$PREFIX/venv"
 BIN="$HOME/.local/bin"
 HYPR_DIR="$HOME/.config/hypr"
 HYPR_SNIPPET="$HYPR_DIR/gamebuddy.conf"
+SWAY_DIR="$HOME/.config/sway"
+SWAY_SNIPPET="$SWAY_DIR/gamebuddy.conf"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 say()  { printf '\033[1;35m[gamebuddy]\033[0m %s\n' "$*"; }
@@ -25,23 +28,42 @@ uninstall() {
     rm -f "$HYPR_SNIPPET"
     warn "remove the 'source = $HYPR_SNIPPET' line from your hyprland.conf"
   fi
+  if [ -f "$SWAY_SNIPPET" ]; then
+    rm -f "$SWAY_SNIPPET"
+    warn "remove the 'include $SWAY_SNIPPET' line from your sway config"
+  fi
   say "kept your config (~/.config/gamebuddy) and database (~/.local/share/gamebuddy/gamebuddy.db)"
   exit 0
 }
 [ "${1:-}" = "uninstall" ] && uninstall
 
 # ---- system packages -------------------------------------------------------
-if command -v pacman >/dev/null; then
-  PKGS=(python python-pip grim portaudio espeak-ng wl-clipboard)
-  MISSING=()
-  for p in "${PKGS[@]}"; do pacman -Qi "$p" >/dev/null 2>&1 || MISSING+=("$p"); done
-  if [ ${#MISSING[@]} -gt 0 ]; then
-    say "installing system packages: ${MISSING[*]} (sudo)"
-    sudo pacman -S --needed --noconfirm "${MISSING[@]}"
+install_missing() {  # $1 = "check cmd" template with %s, $2 = install cmd, rest = packages
+  local check="$1" inst="$2"; shift 2
+  local missing=()
+  for p in "$@"; do eval "${check//%s/$p}" >/dev/null 2>&1 || missing+=("$p"); done
+  if [ ${#missing[@]} -gt 0 ]; then
+    say "installing system packages: ${missing[*]} (sudo)"
+    # shellcheck disable=SC2086
+    sudo $inst "${missing[@]}"
   fi
+}
+if command -v pacman >/dev/null; then
+  install_missing 'pacman -Qi %s' 'pacman -S --needed --noconfirm' python python-pip grim portaudio espeak-ng wl-clipboard
+elif command -v apt-get >/dev/null; then
+  install_missing 'dpkg -s %s' 'apt-get install -y' python3 python3-venv python3-pip grim libportaudio2 espeak-ng wl-clipboard
+elif command -v dnf >/dev/null; then
+  install_missing 'rpm -q %s' 'dnf install -y' python3 python3-pip grim portaudio espeak-ng wl-clipboard
+elif command -v zypper >/dev/null; then
+  install_missing 'rpm -q %s' 'zypper install -y' python3 python3-pip grim portaudio espeak-ng wl-clipboard
 else
-  warn "not an Arch system: install python>=3.11, grim, portaudio and espeak-ng with your package manager"
+  warn "unknown package manager: install python>=3.11, grim, portaudio and espeak-ng yourself"
 fi
+PYV="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo 0)"
+case "$PYV" in 3.1[1-9]|3.[2-9]*) ;; *) warn "python3 is $PYV; GameBuddy needs >= 3.11 (use pyenv/uv: uv python install 3.12)";; esac
+case "${XDG_CURRENT_DESKTOP:-}" in
+  *GNOME*|*KDE*) say "GNOME/KDE Wayland: game vision uses the whole screen via spectacle / gnome-screenshot / the xdg portal";;
+esac
 
 # ---- legacy GameBro (<= 0.1.1) ---------------------------------------------
 LEGACY_PREFIX="${XDG_DATA_HOME:-$HOME/.local/share}/gamebro"
@@ -92,6 +114,17 @@ if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || [ -d "$HYPR_DIR" ]; then
     say "added 'source = $HYPR_SNIPPET' to hyprland.conf"
   fi
   command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 || true
+fi
+
+# ---- sway rule + binds -----------------------------------------------------
+if [ -n "${SWAYSOCK:-}" ] || [ -f "$SWAY_DIR/config" ]; then
+  mkdir -p "$SWAY_DIR"
+  "$VENV/bin/gamebuddy" sway-config > "$SWAY_SNIPPET"
+  if [ -f "$SWAY_DIR/config" ] && ! grep -q "gamebuddy.conf" "$SWAY_DIR/config"; then
+    printf '\n# GameBuddy overlay rule and keybinds\ninclude %s\n' "$SWAY_SNIPPET" >> "$SWAY_DIR/config"
+    say "added 'include $SWAY_SNIPPET' to your sway config"
+  fi
+  command -v swaymsg >/dev/null && swaymsg reload >/dev/null 2>&1 || true
 fi
 
 if ! command -v codex >/dev/null; then

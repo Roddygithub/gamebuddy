@@ -97,14 +97,24 @@ class OpenAIProvider(LLMProvider):
             "max_tokens": max_tokens or 2048,
             "temperature": self.temperature,
         }
-        if tools:
+        if tools and not getattr(self, "_no_tools", False):
             params["tools"] = self._tools(tools)
         if json_mode:
             params["response_format"] = {"type": "json_object"}
         turn = ChatTurn()
         text_parts: list[str] = []
         calls: dict[int, dict[str, Any]] = {}
-        for chunk in self.client.chat.completions.create(**params):
+        try:
+            stream = self.client.chat.completions.create(**params)
+        except Exception as exc:  # noqa: BLE001
+            # Ollama answers 400 "<model> does not support tools": retry once without them.
+            if "tools" in params and "does not support tools" in str(exc):
+                self._no_tools = True
+                params.pop("tools")
+                stream = self.client.chat.completions.create(**params)
+            else:
+                raise
+        for chunk in stream:
             if not chunk.choices:
                 continue
             choice = chunk.choices[0]

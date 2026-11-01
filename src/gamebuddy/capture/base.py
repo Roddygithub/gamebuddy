@@ -95,7 +95,10 @@ def detect_session() -> str:
     if os.environ.get("SWAYSOCK") and have("swaymsg"):
         return "sway"
     if os.environ.get("WAYLAND_DISPLAY"):
-        return "wlroots"
+        desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+        if any(d in desktop for d in ("GNOME", "KDE", "COSMIC", "UBUNTU", "PANTHEON", "DEEPIN")):
+            return "portal"
+        return "wlroots" if have("grim") else "portal"
     if os.environ.get("DISPLAY"):
         return "x11"
     return "none"
@@ -115,6 +118,10 @@ def get_backend(preferred: str = "auto") -> CaptureBackend:
         from gamebuddy.capture.sway import GrimOutputBackend
 
         return GrimOutputBackend()
+    if kind == "portal":
+        from gamebuddy.capture.portal import PortalBackend
+
+        return PortalBackend()
     if kind == "x11":
         from gamebuddy.capture.x11 import X11Backend
 
@@ -145,6 +152,8 @@ def overlay_mask(window: WindowInfo, overlay: Rect | None) -> Rect | None:
     """Overlay rect in window-relative coordinates, if they overlap."""
     if overlay is None:
         return None
+    if window.rect.w == 0 and window.rect.h == 0:  # whole-screen backends: absolute == relative
+        return overlay
     inter = window.rect.intersect(overlay)
     if inter is None:
         return None

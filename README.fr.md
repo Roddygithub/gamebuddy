@@ -131,8 +131,21 @@ model = ""                 # modèle économique par défaut (claude-haiku-5-5 /
 mêmes modèles Whisper que faster-whisper, mais avec ses builds GPU Vulkan/ROCm et le modèle déjà
 téléchargé. Laisser `stt_model` vide pour utiliser la config de voxtype.
 
-Configuration 100 % locale : `provider = "ollama"`, `model = "llama3.2-vision"`,
-`stt = "faster_whisper"` (`pip install 'gamebuddy[local]'`), `tts = "piper"`.
+Configuration 100 % locale : `provider = "ollama"`, `model = "qwen3-vl"` (vision + appels d'outils : recherche web et épinglage continuent de marcher ; un modèle sans outils répond simplement sans),
+`stt = "faster_whisper"` (`pip install 'gamebuddy[local]'`), `tts = "piper"`. La recherche web est faite par GameBuddy lui-même (DuckDuckGo + lecture de page), donc elle marche avec n'importe quel fournisseur.
+
+## Bureaux et distributions
+
+| Session | Vision du jeu | Règles d'overlay / push-to-talk |
+|---|---|---|
+| Hyprland | fenêtre choisie (`hyprctl` + `grim`) | `gamebuddy hyprland-config` (écrit par l'installeur) |
+| sway | fenêtre choisie (`swaymsg` + `grim`) | `gamebuddy sway-config` (écrit par l'installeur) |
+| autres wlroots (river, niri, labwc…) | écran entier (`grim`) | lier `gamebuddy ptt start/stop` et `gamebuddy toggle` dans le compositeur |
+| GNOME / KDE Wayland | écran entier (`spectacle`, `gnome-screenshot` ou le portail xdg) | raccourcis personnalisés vers les mêmes commandes ; `hotkeys.mode = "toggle"` si le bureau ne gère pas le relâchement |
+| X11 | fenêtre choisie (`wmctrl` + ImageMagick) | écouteur global intégré (`pip install 'gamebuddy[x11]'`, `hotkeys.x11_listener = true`) |
+
+`install.sh` installe les paquets système via pacman, apt, dnf ou zypper ; le reste passe par pip.
+Omarchy n'apporte rien d'obligatoire : ses couleurs de thème et sa pile de dictée voxtype sont reprises si présentes.
 
 ## Mises à jour
 

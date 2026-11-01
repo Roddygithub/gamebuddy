@@ -87,7 +87,7 @@ class AudioConfig:
 
 @dataclass
 class CaptureConfig:
-    backend: str = "auto"  # auto | hyprland | sway | x11 | macos | none
+    backend: str = "auto"  # auto | hyprland | sway | wlroots | portal (GNOME/KDE) | x11 | macos | none
     attach_screenshot: bool = True
     max_width: int = 1280
     jpeg_quality: int = 72
