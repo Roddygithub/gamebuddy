@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -9,8 +10,10 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QKeySequenceEdit,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -48,7 +51,18 @@ class SettingsDialog(QDialog):
         self.personality = QComboBox()
         self.personality.addItems(["coach", "friendly", "concise"])
         self.personality.setCurrentText(cfg.general.personality)
-        self.ptt = QLineEdit(cfg.hotkeys.push_to_talk)
+        from gamebuddy.hotkeys import binding_to_sequence
+
+        self.ptt = QKeySequenceEdit(QKeySequence(binding_to_sequence(cfg.hotkeys.push_to_talk)))
+        self.ptt.setMaximumSequenceLength(1)
+        self.toggle_key = QKeySequenceEdit(QKeySequence(binding_to_sequence(cfg.hotkeys.toggle_widget)))
+        self.toggle_key.setMaximumSequenceLength(1)
+        self.ptt_mode = QComboBox()
+        self.ptt_mode.addItem("Maintenir pour parler" if tr.language == "fr" else "Hold to talk", "hold")
+        self.ptt_mode.addItem(
+            "Appuyer pour démarrer / arrêter" if tr.language == "fr" else "Press to start / stop", "toggle"
+        )
+        self.ptt_mode.setCurrentIndex(max(0, self.ptt_mode.findData(cfg.hotkeys.mode)))
         self.opacity = QDoubleSpinBox()
         self.opacity.setRange(0.3, 1.0)
         self.opacity.setSingleStep(0.05)
@@ -63,7 +77,9 @@ class SettingsDialog(QDialog):
         self.auto_update.addItems(["off", "notify", "auto"])
         self.auto_update.setCurrentText(cfg.general.auto_update)
         f.addRow("Updates", self.auto_update)
-        f.addRow("Push-to-talk (Hyprland)", self.ptt)
+        f.addRow("Parler" if tr.language == "fr" else "Talk shortcut", self.ptt)
+        f.addRow("Mode micro" if tr.language == "fr" else "Microphone mode", self.ptt_mode)
+        f.addRow("Afficher / masquer" if tr.language == "fr" else "Show / hide", self.toggle_key)
         self.ui_mode = QComboBox()
         self.ui_mode.addItems(["orb", "panel"])
         self.ui_mode.setCurrentText(cfg.ui.mode)
@@ -129,7 +145,13 @@ class SettingsDialog(QDialog):
         self.stt = QComboBox()
         self.stt.addItems(STT)
         self.stt.setCurrentText(cfg.speech.stt)
-        self.stt_model = QLineEdit(cfg.speech.stt_model)
+        self.stt_model = QComboBox()
+        self.stt_model.setEditable(True)
+        self.stt_model.addItems(["tiny", "base", "small", "medium", "whisper-1"])
+        self.stt_model.setCurrentText(cfg.speech.stt_model)
+        self.stt_model.setToolTip(
+            "Whisper local : tiny = rapide ; base = équilibré ; small/medium = plus lourds."
+        )
         self.tts = QComboBox()
         self.tts.addItems(TTS)
         self.tts.setCurrentText(cfg.speech.tts)
@@ -192,12 +214,40 @@ class SettingsDialog(QDialog):
         layout.addWidget(buttons)
 
     def _save(self) -> None:
+        from dataclasses import replace
+
+        from gamebuddy.hotkeys import apply_hypr_bindings, sequence_to_binding
+
         c = self.cfg
+        try:
+            hotkeys = replace(
+                c.hotkeys,
+                push_to_talk=sequence_to_binding(
+                    self.ptt.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
+                ),
+                toggle_widget=sequence_to_binding(
+                    self.toggle_key.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
+                ),
+                mode=self.ptt_mode.currentData(),
+            )
+            if hotkeys.push_to_talk == hotkeys.toggle_widget:
+                raise ValueError("Les deux raccourcis doivent être différents.")
+            if hotkeys != c.hotkeys:
+                applied = apply_hypr_bindings(hotkeys, c.hotkeys)
+                if not applied:
+                    QMessageBox.information(
+                        self,
+                        "Raccourcis",
+                        "Raccourcis enregistrés. Actualise aussi les raccourcis globaux dans les réglages de ton bureau (ou avec gamebuddy hyprland-config / sway-config).",
+                    )
+        except Exception as exc:  # surface compositor reload/validation failures without losing the dialog
+            QMessageBox.warning(self, "Raccourcis", str(exc))
+            return
         c.general.language = self.language.currentData()
         c.general.assistant_name = self.name.text().strip() or "Buddy"
         c.general.personality = self.personality.currentText()
         c.general.auto_update = self.auto_update.currentText()
-        c.hotkeys.push_to_talk = self.ptt.text().strip() or "ALT, V"
+        c.hotkeys = hotkeys
         c.ui.opacity = self.opacity.value()
         c.ui.mode = self.ui_mode.currentText()
         c.ui.font_size = self.font_size.value()
@@ -210,7 +260,7 @@ class SettingsDialog(QDialog):
         c.llm.web_search = self.web.isChecked()
         c.capture.attach_screenshot = self.screenshot.isChecked()
         c.speech.stt = self.stt.currentText()
-        c.speech.stt_model = self.stt_model.text().strip()
+        c.speech.stt_model = self.stt_model.currentText().strip()
         if c.speech.stt == "voxtype":
             c.speech.voxtype_model = c.speech.stt_model
         c.speech.tts = self.tts.currentText()

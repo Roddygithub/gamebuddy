@@ -261,3 +261,17 @@ the menu is disabled while a reply is running. **Other provider / model…** ope
 the AI settings tab for provider, custom model and API access configuration.
 Reasoning controls are offered for Codex and Anthropic; other adapters do not
 send that parameter.
+
+### Talk mode, shortcuts and latency
+
+Settings → General lets you capture the talk and visibility shortcuts and choose
+hold-to-talk or press-to-start/press-again-to-stop. GameBuddy updates its managed
+Hyprland shortcut blocks with conflict checking and rollback on invalid config.
+For other desktops, also update the global shortcuts in the desktop settings.
+Generated Hyprland/sway bindings respect the chosen talk mode.
+
+Voice latency includes transcription, capture, AI/search calls and speech
+synthesis. Cached Whisper models are warmed in the background without microphone
+capture or network access. Voice settings offer `tiny` for lower CPU cost with a
+possible accuracy tradeoff, or `base` for balance. `gamebuddy status` reports the
+last transcription and assistant response durations.

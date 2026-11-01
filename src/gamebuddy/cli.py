@@ -82,11 +82,9 @@ def hyprland_config(syntax: str = "auto") -> str:
             text = text.replace(f'size = "{w} {h}", ', "")
         else:
             text = "\n".join(line for line in text.splitlines() if "size " not in line) + "\n"
-    binds = HYPR_BINDS.format(ptt=cfg.hotkeys.push_to_talk, toggle=cfg.hotkeys.toggle_widget)
-    if syntax == "lua":
-        binds = "-- binds (translate to hl.bind if your binds live in Lua):\n" + "".join(
-            "-- " + line + "\n" for line in binds.strip().splitlines()
-        )
+    from gamebuddy.hotkeys import hypr_bindings
+
+    binds = hypr_bindings(cfg.hotkeys, syntax == "lua")
     return text + "\n" + binds
 
 
@@ -110,6 +108,9 @@ def sway_config() -> str:
     text = SWAY_RULES.format(
         w=w, h=h, ptt=sway_key(cfg.hotkeys.push_to_talk), toggle=sway_key(cfg.hotkeys.toggle_widget)
     )
+    if cfg.hotkeys.mode == "toggle":
+        text = text.replace("ptt start", "ptt toggle")
+        text = "\n".join(line for line in text.splitlines() if "ptt stop" not in line) + "\n"
     if cfg.ui.compact_orb == "auto":
         text = text.replace(f", resize set {w} {h}", "")
     return text

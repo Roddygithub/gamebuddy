@@ -29,6 +29,10 @@ uninstall() {
     rm -f "$HYPR_SNIPPET"
     warn "remove the 'source = $HYPR_SNIPPET' line from your hyprland.conf"
   fi
+  if [ -f "$HYPR_DIR/gamebuddy.lua" ]; then
+    rm -f "$HYPR_DIR/gamebuddy.lua"
+    warn "remove require(\"hypr.gamebuddy\") from your hyprland.lua"
+  fi
   if [ -f "$SWAY_SNIPPET" ]; then
     rm -f "$SWAY_SNIPPET"
     warn "remove the 'include $SWAY_SNIPPET' line from your sway config"
@@ -109,11 +113,19 @@ systemctl --user enable --now gamebuddy-update.timer 2>/dev/null || true
 # ---- Hyprland rules + binds ------------------------------------------------
 if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || [ -d "$HYPR_DIR" ]; then
   mkdir -p "$HYPR_DIR"
-  "$VENV/bin/gamebuddy" hyprland-config > "$HYPR_SNIPPET"
-  MAIN="$HYPR_DIR/hyprland.conf"
-  if [ -f "$MAIN" ] && ! grep -q "gamebuddy.conf" "$MAIN"; then
-    printf '\n# GameBuddy overlay rules and keybinds\nsource = %s\n' "$HYPR_SNIPPET" >> "$MAIN"
-    say "added 'source = $HYPR_SNIPPET' to hyprland.conf"
+  if [ -f "$HYPR_DIR/hyprland.lua" ]; then
+    HYPR_SNIPPET="$HYPR_DIR/gamebuddy.lua"
+    "$VENV/bin/gamebuddy" hyprland-config --syntax lua > "$HYPR_SNIPPET"
+    if ! grep -q 'hypr.gamebuddy' "$HYPR_DIR/hyprland.lua"; then
+      printf '\n-- GameBuddy overlay and shortcuts\nrequire("hypr.gamebuddy")\n' >> "$HYPR_DIR/hyprland.lua"
+    fi
+  else
+    "$VENV/bin/gamebuddy" hyprland-config > "$HYPR_SNIPPET"
+    MAIN="$HYPR_DIR/hyprland.conf"
+    if [ -f "$MAIN" ] && ! grep -q "gamebuddy.conf" "$MAIN"; then
+      printf '\n# GameBuddy overlay rules and keybinds\nsource = %s\n' "$HYPR_SNIPPET" >> "$MAIN"
+      say "added 'source = $HYPR_SNIPPET' to hyprland.conf"
+    fi
   fi
   command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 || true
 fi

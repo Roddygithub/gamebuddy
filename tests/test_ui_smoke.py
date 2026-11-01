@@ -187,3 +187,22 @@ def test_tray_ai_choice_persists_and_does_not_change_busy_provider(qapp, tmp_pat
         gb.widget.close()
         gb._ai_menu.close()
         gb.store.close()
+
+
+def test_settings_capture_shortcut_and_recording_mode(qapp, monkeypatch):
+    from gamebuddy import hotkeys
+    from gamebuddy.config import Config, load_config
+    from gamebuddy.i18n import Translator
+    from gamebuddy.ui.settings import SettingsDialog
+
+    applied = []
+    monkeypatch.setattr(hotkeys, "apply_hypr_bindings", lambda cfg, old: applied.append(cfg) or True)
+    cfg = Config()
+    dlg = SettingsDialog(cfg, Translator("fr"))
+    dlg.ptt.setKeySequence("Ctrl+Alt+P")
+    dlg.ptt_mode.setCurrentIndex(dlg.ptt_mode.findData("toggle"))
+    dlg._save()
+    assert load_config().hotkeys.push_to_talk == "CTRL ALT, P"
+    assert load_config().hotkeys.mode == "toggle"
+    assert applied[0].mode == "toggle"
+    dlg.close()

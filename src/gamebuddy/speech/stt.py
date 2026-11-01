@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import io
+import logging
 import shutil
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 from gamebuddy.config import Config
@@ -16,6 +18,8 @@ class STTError(RuntimeError):
 
 
 _local_model = None
+_local_model_size = None
+_model_lock = threading.Lock()
 
 
 def transcribe(wav: bytes, cfg: Config) -> str:
@@ -47,22 +51,45 @@ def _openai(wav: bytes, cfg: Config) -> str:
     return (getattr(result, "text", "") or "").strip()
 
 
-def _faster_whisper(wav: bytes, cfg: Config) -> str:
-    global _local_model
+def _get_local_model(cfg: Config, download: bool = True):
+    global _local_model, _local_model_size
     try:
         from faster_whisper import WhisperModel
     except ImportError as exc:
         raise STTError("pip install 'gamebuddy[local]' for faster-whisper") from exc
-    if _local_model is None:
-        size = cfg.speech.stt_model if cfg.speech.stt_model not in ("", "whisper-1") else "small"
-        _local_model = WhisperModel(size, device="auto", compute_type="int8")
+    size = cfg.speech.stt_model if cfg.speech.stt_model not in ("", "whisper-1") else "small"
+    with _model_lock:
+        if _local_model is None or _local_model_size != size:
+            try:
+                model = WhisperModel(size, device="auto", compute_type="int8", local_files_only=True)
+            except (ValueError, OSError):
+                if not download:
+                    return None
+                model = WhisperModel(size, device="auto", compute_type="int8")
+            _local_model = model
+            _local_model_size = size
+        return _local_model
+
+
+def warm_local_model(cfg: Config) -> None:
+    """Warm only downloaded models, without capturing audio or making network calls."""
+    if cfg.speech.stt != "faster_whisper":
+        return
+    try:
+        _get_local_model(cfg, download=False)
+    except Exception as exc:
+        logging.getLogger(__name__).debug("local STT warmup skipped: %s", exc)
+
+
+def _faster_whisper(wav: bytes, cfg: Config) -> str:
+    model = _get_local_model(cfg)
     import numpy as np
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fh:
         fh.write(wav)
         path = fh.name
     try:
-        segments, _info = _local_model.transcribe(
+        segments, _info = model.transcribe(
             path, language=cfg.speech.stt_language or None, vad_filter=True, beam_size=1
         )
         return " ".join(s.text.strip() for s in segments).strip()
