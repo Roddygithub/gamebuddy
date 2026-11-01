@@ -1,0 +1,14 @@
+# Changelog
+
+## 0.1.0 — 2026-11-01
+
+First public version.
+
+- Qt widget: status, transcript, pinned panel, push-to-talk / hands-free mic button, compact mode.
+- Providers: Anthropic (streaming, tools, vision), OpenAI-compatible (OpenAI, Ollama, LM Studio…).
+- Tools: web search, page fetch, pin/unpin, remember/recall.
+- Capture: Hyprland, sway, generic wlroots, X11, macOS (dev); overlay masking.
+- Voice: OpenAI / faster-whisper / whisper.cpp STT; OpenAI / piper / espeak-ng TTS.
+- Coach mode with structured-state gate and audit log.
+- IPC socket + CLI; Hyprland config generator for three rule syntaxes; Omarchy bar widget;
+  installer, desktop entry, systemd user service, PKGBUILD.

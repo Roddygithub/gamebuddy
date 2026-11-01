@@ -287,6 +287,8 @@ class BroWidget(QWidget):
         icon = {"build": "🛠", "checklist": "☑", "table": "▦", "link": "🔗", "video": "▶"}.get(kind, "📌")
         self.pin_title.setText(f"{icon} {title}")
         self.pin_body.setMarkdown(markdown)
+        self.pin_body.document().setTextWidth(self.pin_body.viewport().width() or self.width() - 60)
+        self.pin_body.setFixedHeight(int(min(220, self.pin_body.document().size().height() + 12)))
         self.pin_body.setVisible(True)
         self.btn_pin_toggle.setText("▾")
         if not self._compact:

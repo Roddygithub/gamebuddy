@@ -1,0 +1,37 @@
+# Maintainer: Roddy Salardon
+# AUR-style recipe. Runtime Python deps not in [extra] (ddgs) are vendored via pip at build time
+# by install.sh instead; this PKGBUILD documents the system dependencies.
+pkgname=gamebro-git
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Voice-first AI gaming companion for Linux (Wayland/Hyprland/Omarchy)"
+arch=('any')
+url="https://github.com/Roddygithub/gamebro"
+license=('MIT')
+depends=('python>=3.11' 'pyside6' 'python-numpy' 'python-sounddevice' 'python-openai' 'python-anthropic'
+         'python-httpx' 'python-pillow' 'python-tomli-w' 'grim' 'portaudio')
+optdepends=('espeak-ng: offline text-to-speech'
+            'piper-tts: neural offline text-to-speech'
+            'wmctrl: window list on X11'
+            'imagemagick: X11 screenshots'
+            'hyprland: window list and overlay rules')
+makedepends=('git' 'python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() { cd gamebro && git describe --tags --long 2>/dev/null | sed 's/^v//;s/-/.r/;s/-/./' || echo 0.1.0.r0; }
+
+build() {
+  cd gamebro
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd gamebro
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  sed 's|@BIN@|/usr/bin/gamebro|' packaging/gamebro.desktop > gamebro.desktop
+  install -Dm644 gamebro.desktop "$pkgdir/usr/share/applications/gamebro.desktop"
+  sed 's|@BIN@|/usr/bin/gamebro|' packaging/gamebro.service > gamebro.service
+  install -Dm644 gamebro.service "$pkgdir/usr/lib/systemd/user/gamebro.service"
+}

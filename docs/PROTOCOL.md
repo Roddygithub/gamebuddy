@@ -1,0 +1,26 @@
+# IPC protocol
+
+Socket: `$XDG_RUNTIME_DIR/gamebro.sock` (override with `GAMEBRO_SOCKET`). Newline-delimited JSON.
+One request per line; one response per line.
+
+| Request | Response |
+|---|---|
+| `{"cmd":"ping"}` | `{"ok":true,"app":"gamebro"}` |
+| `{"cmd":"status"}` | `{"ok":true,"visible":…,"window":…,"recording":…,"hands_free":…,"coach":…,"busy":…,"backend":…,"language":…}` |
+| `{"cmd":"windows"}` | `{"ok":true,"windows":[{"id":…,"title":…,"app_id":…,"rect":{x,y,w,h}}]}` |
+| `{"cmd":"ptt","action":"start|stop|toggle"}` | `{"ok":true,"queued":"ptt"}` |
+| `{"cmd":"ask","text":"…"}` | queued |
+| `{"cmd":"toggle"}` / `show` / `hide` / `unpin` / `settings` / `quit` | queued |
+| `{"cmd":"listen","action":"on|off|toggle"}` | queued |
+| `{"cmd":"coach","action":"on|off|toggle"}` | queued |
+| `{"cmd":"select_window","id":"…"}` / `{"cmd":"pick_window"}` | queued |
+| `{"cmd":"subscribe"}` | `{"ok":true,"subscribed":true}` then a stream of events |
+
+Events: `{"event":"status","key":"listening"}`, `{"event":"window","title":…,"id":…}`,
+`{"event":"coach","advice":…}`.
+
+Example from a shell:
+
+```bash
+printf '{"cmd":"ask","text":"which of these three items?"}\n' | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/gamebro.sock"
+```
