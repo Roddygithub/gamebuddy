@@ -9,10 +9,10 @@ Stay in your game, talk to Buddy. A voice-first AI companion widget for Wayland,
   <a href="README.fr.md">🇫🇷 Version française</a>
 </p>
 
-<p align="center"><img src="docs/assets/orb-fr.png" alt="GameBuddy widget" width="420"></p>
+<p align="center"><img src="preview.png" alt="GameBuddy: voice controls, AI selection and a pinned checklist" width="960"></p>
 
 GameBuddy is an AI companion named **Buddy** that lives in one small widget next to your game.
-Hold a key and talk; Buddy can see the game window you selected, search the web,
+Hold a key to talk, or choose press-to-start/press-again-to-stop; Buddy can see the game window you selected, search the web,
 answer in your language, keep builds and checklists pinned on screen, and remember
 useful details between sessions. It **advises only**: it never injects input,
 reads game memory, or plays for you.
@@ -22,13 +22,17 @@ local model through Ollama).
 
 ## What you see in game
 
-By default Buddy is just an **orb**: his animated face and his last words, nothing else. He blinks
+Buddy adapts to your screen: a **small animated head** on a laptop, or an **orb with a caption** when there is more room. He blinks
 while idle, pulses while listening, spins dots while thinking and moves his mouth while speaking.
 Clicks outside the orb go to the game. Click the face (or let him pin a checklist) and the full
 panel opens: pinned content, transcript, text input. Set `mode = "panel"` under `[ui]` to start
 with the panel instead.
 
-<p align="center"><img src="docs/assets/widget-fr.png" width="360" alt="GameBuddy panel with a pinned checklist"></p>
+<p align="center"><img src="docs/assets/widget-en.png" width="360" alt="Current GameBuddy panel with a demo checklist"></p>
+
+<p align="center"><img src="docs/assets/compact-orb.png" width="64" alt="Compact Buddy head"> &nbsp; <img src="docs/assets/orb-en.png" width="260" alt="Buddy orb with a caption"></p>
+
+Screenshots show the current interface with demo text. The compact head and captioned orb are shown at their logical sizes.
 
 ## Omarchy Quattro plugin
 
@@ -99,6 +103,42 @@ The plugin and its own preview are MIT licensed. The preview uses demo UI text,
 not a game screenshot. See [plugin validation and publishing](docs/OMARCHY-PLUGIN.md)
 for the reviewed checks and listing metadata.
 
+## Everyday controls
+
+### Adaptive Buddy size
+
+`[ui] compact_orb = "auto"` (the default) uses a 64 × 64 head when the usable
+screen is at most 1280 logical pixels wide or 800 high, accounting for desktop
+HiDPI scaling. Larger screens use the 260 × 96 orb with a caption. The panel
+fits within the usable screen, and the layout updates when its screen or
+resolution changes. Set `compact_orb = true` or `false` to override the choice.
+The bundled monochrome symbolic tray icon follows the bar foreground on hosts
+that support symbolic recoloring, including Omarchy.
+
+### Choose AI from the system tray
+
+Right-click Buddy → **AI / reasoning** to see the current selection. For Codex,
+**Model** uses the CLI's local catalogue when available; **Reasoning** offers the
+selected model's advertised levels. Choices persist for subsequent exchanges;
+the menu is disabled while a reply is running. **Other provider / model…** opens
+the AI settings tab for provider, custom model and API access configuration.
+Reasoning controls are offered for Codex and Anthropic; other adapters do not
+send that parameter.
+
+### Talk mode, shortcuts and latency
+
+Settings → General lets you capture the talk and visibility shortcuts and choose
+hold-to-talk or press-to-start/press-again-to-stop. GameBuddy updates its managed
+Hyprland shortcut blocks with conflict checking and rollback on invalid config.
+For other desktops, also update the global shortcuts in the desktop settings.
+Generated Hyprland/sway bindings respect the chosen talk mode.
+
+Voice latency includes transcription, capture, AI/search calls and speech
+synthesis. Cached Whisper models are warmed in the background without microphone
+capture or network access. Voice settings offer `tiny` for lower CPU cost with a
+possible accuracy tradeoff, or `base` for balance. `gamebuddy status` reports the
+last transcription and assistant response durations.
+
 ## Features
 
 - **Voice-first** — hold `Alt+V` (configurable) to talk, or turn on hands-free listening. Typing works too.
@@ -128,7 +168,7 @@ sandbox, no session files); pinning, memory and web search still work through an
 "actions" envelope that GameBuddy executes. Trade-offs: a few seconds of extra latency per
 answer, no token streaming, and no speech API — voice falls back to local engines
 (voxtype if Omarchy's dictation tool is installed, else faster-whisper, for transcription;
-piper or espeak-ng for speech), which `./install.sh` installs by default. `gamebuddy doctor` tells you whether Codex is installed and signed in.
+piper or espeak-ng for speech), with faster-whisper and espeak-ng installed by `./install.sh`; voxtype and Piper are optional. `gamebuddy doctor` tells you whether Codex is installed and signed in.
 
 ## Quick start (Arch Linux / Omarchy)
 
@@ -195,13 +235,17 @@ language = "auto"          # fr, en, de, es, it, pt-BR, pt-PT
 assistant_name = "Buddy"
 personality = "coach"      # coach | friendly | concise
 
+[ui]
+compact_orb = "auto"      # auto | true | false
+
 [hotkeys]
+mode = "hold"             # hold | toggle
 push_to_talk = "ALT, V"    # Hyprland bind syntax
 toggle_widget = "ALT, B"
 
 [llm]
 provider = "codex"         # codex (ChatGPT Plus) | anthropic | openai | ollama | openai_compatible
-model = ""                 # codex default; e.g. "claude-opus-5-5" for anthropic
+model = ""                 # provider default; choose a model in the tray or AI settings
 effort = "low"             # anthropic / codex: low keeps answers fast and cheap mid-game
 api_key = ""               # or ANTHROPIC_API_KEY / OPENAI_API_KEY in the environment
 
@@ -213,7 +257,7 @@ speak_replies = true
 [coach]
 enabled = false
 interval_s = 4.0
-model = ""                 # cheap default per provider (claude-haiku-5-5 / gpt-4o-mini)
+model = ""                 # leave empty for the provider-specific default
 ```
 
 `voxtype` reuses Omarchy's dictation stack (*Install > AI > Dictation*, or `yay -S voxtype`):
@@ -253,8 +297,7 @@ you always run the source you can read.
 `gamebuddy hyprland-config` prints the rules and binds for your Hyprland version
 (legacy `windowrulev2`, the 0.53+ `match:` syntax, or Lua for 0.55+). The widget
 is a floating, pinned window, so it stays visible across workspaces and above
-windowed / borderless-fullscreen games. Exclusive fullscreen is not guaranteed,
-as with the original.
+windowed / borderless-fullscreen games. Exclusive fullscreen support depends on the compositor and game.
 
 ```
 bind  = ALT, V, exec, gamebuddy ptt start
@@ -303,7 +346,9 @@ compositor behaviour need a desktop session.
 
 ## Status
 
-0.1.0 — first public version. Known limits:
+Current version: **0.3.1**. The Omarchy marketplace submission passed structural and Quattro validation, and a maintainer approved revision `b73930d` after capability review. The engine requires manual setup. Track the current [submission and listing status](https://github.com/omacom/omarchy-plugin-marketplace/issues/13577).
+
+Known limits:
 
 - Per-window capture uses region screenshots; a window hidden behind another will show what is on top. A `hyprland-toplevel-export` backend (what OmaPiP uses) is a planned improvement.
 - Global hotkeys on Wayland go through the compositor (Hyprland binds). An X11 in-process listener is available with `pip install 'gamebuddy[x11]'` and `hotkeys.x11_listener = true`.
@@ -312,37 +357,3 @@ compositor behaviour need a desktop session.
 ## License
 
 MIT — see [LICENSE](LICENSE). Independent community project, not affiliated with any game publisher or AI vendor.
-
-### Adaptive Buddy size
-
-`[ui] compact_orb = "auto"` (the default) uses a 64 × 64 head when the usable
-screen is at most 1280 logical pixels wide or 800 high, accounting for desktop
-HiDPI scaling. Larger screens use the 260 × 96 orb with a caption. The panel
-fits within the usable screen, and the layout updates when its screen or
-resolution changes. Set `compact_orb = true` or `false` to override the choice.
-The bundled monochrome symbolic tray icon follows the bar foreground on hosts
-that support symbolic recoloring, including Omarchy.
-
-### Choose AI from the system tray
-
-Right-click Buddy → **AI / reasoning** to see the current selection. For Codex,
-**Model** uses the CLI's local catalogue when available; **Reasoning** offers the
-selected model's advertised levels. Choices persist for subsequent exchanges;
-the menu is disabled while a reply is running. **Other provider / model…** opens
-the AI settings tab for provider, custom model and API access configuration.
-Reasoning controls are offered for Codex and Anthropic; other adapters do not
-send that parameter.
-
-### Talk mode, shortcuts and latency
-
-Settings → General lets you capture the talk and visibility shortcuts and choose
-hold-to-talk or press-to-start/press-again-to-stop. GameBuddy updates its managed
-Hyprland shortcut blocks with conflict checking and rollback on invalid config.
-For other desktops, also update the global shortcuts in the desktop settings.
-Generated Hyprland/sway bindings respect the chosen talk mode.
-
-Voice latency includes transcription, capture, AI/search calls and speech
-synthesis. Cached Whisper models are warmed in the background without microphone
-capture or network access. Voice settings offer `tiny` for lower CPU cost with a
-possible accuracy tradeoff, or `base` for balance. `gamebuddy status` reports the
-last transcription and assistant response durations.
