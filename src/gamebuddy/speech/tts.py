@@ -85,7 +85,8 @@ def _espeak(text: str, language: str) -> bytes:
         path = Path(fh.name)
     try:
         subprocess.run(
-            [binary, "-v", _ESPEAK_LANG.get(language, "en"), "-w", str(path), text],
+            [binary, "-v", _ESPEAK_LANG.get(language, "en"), "-w", str(path)],
+            input=text.encode("utf-8"),
             capture_output=True,
             timeout=60,
             check=True,
