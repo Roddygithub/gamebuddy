@@ -1,6 +1,6 @@
 """Tiny translation layer. The widget follows the desktop language unless overridden.
 
-Supported: fr, en, de, es, it, pt-BR, pt-PT (same set as the Windows original).
+Supported: fr, en, de, es, it, pt-BR, pt-PT (seven UI languages).
 """
 
 from __future__ import annotations

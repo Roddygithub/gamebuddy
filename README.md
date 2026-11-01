@@ -1,7 +1,7 @@
 # GameBuddy
 
 <p align="center"><strong>Voice-first AI gaming companion for Linux</strong><br>
-Stay in your game, talk to Buddy. A GameKin-like widget for Wayland, Hyprland and Omarchy.</p>
+Stay in your game, talk to Buddy. A voice-first AI companion widget for Wayland, Hyprland and Omarchy.</p>
 
 <p align="center">
   <a href="https://github.com/Roddygithub/gamebuddy/actions/workflows/ci.yml"><img src="https://github.com/Roddygithub/gamebuddy/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
@@ -217,4 +217,4 @@ compositor behaviour need a desktop session.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). GameKin is a trademark of its owner; GameBuddy is an independent project and is not affiliated with it.
+MIT — see [LICENSE](LICENSE). Independent community project, not affiliated with any game publisher or AI vendor.

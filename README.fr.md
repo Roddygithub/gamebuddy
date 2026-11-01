@@ -1,7 +1,7 @@
 # GameBuddy
 
 <p align="center"><strong>Compagnon de jeu IA, piloté à la voix, pour Linux</strong><br>
-Reste dans ton jeu, parle à Buddy. Un widget façon GameKin pour Wayland, Hyprland et Omarchy.</p>
+Reste dans ton jeu, parle à Buddy. Un compagnon IA vocal pour Wayland, Hyprland et Omarchy.</p>
 
 <p align="center"><a href="README.md">🇬🇧 English version</a></p>
 
@@ -167,4 +167,4 @@ dans l'original.
 
 ## Licence
 
-MIT — voir [LICENSE](LICENSE). GameKin est une marque de son propriétaire ; GameBuddy est un projet indépendant, sans affiliation.
+MIT — voir [LICENSE](LICENSE). Projet communautaire indépendant, sans affiliation avec un éditeur de jeux ou un fournisseur d'IA.
