@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import threading
+from importlib.resources import files
 from typing import Any
 
 from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer
@@ -76,6 +77,7 @@ class GameBuddyApp(QObject):
             self.cfg.ui.width,
             self.cfg.ui.height,
             mode=self.cfg.ui.mode,
+            compact_orb=self.cfg.ui.compact_orb,
         )
         self._apply_theme()
         self._apply_window_flags()
@@ -216,7 +218,11 @@ class GameBuddyApp(QObject):
     def _setup_tray(self) -> None:
         if not QSystemTrayIcon.isSystemTrayAvailable():
             return
-        icon = QIcon.fromTheme("audio-input-microphone", QIcon.fromTheme("applications-games"))
+        # Keep the symbolic name so the tray host can tint Buddy to its theme.
+        assets = str(files("gamebuddy") / "assets")
+        if assets not in QIcon.fallbackSearchPaths():
+            QIcon.setFallbackSearchPaths([*QIcon.fallbackSearchPaths(), assets])
+        icon = QIcon.fromTheme("gamebuddy-symbolic")
         self.tray = QSystemTrayIcon(icon, self)
         menu = QMenu()
         for label, slot in (

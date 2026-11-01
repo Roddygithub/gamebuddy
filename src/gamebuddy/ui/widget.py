@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import QPoint, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QRegion, QTextDocument
+from PySide6.QtGui import QAction, QGuiApplication, QRegion, QTextDocument
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -27,6 +27,15 @@ from gamebuddy.ui.avatar import Avatar
 ORB_W, ORB_H = 260, 96
 CAPTION_MAX = 140
 CAPTION_FADE_MS = 9000
+
+
+def compact_for_screen(width: int, height: int, setting: bool | str = "auto") -> bool:
+    """Qt reports logical pixels, so HiDPI scaling is already accounted for."""
+    return width <= 1280 or height <= 800 if setting == "auto" else bool(setting)
+
+
+def fit_panel(width: int, height: int, screen_width: int, screen_height: int) -> tuple[int, int]:
+    return min(width, max(1, screen_width - 32)), min(height, max(1, screen_height - 32))
 
 
 def _plain(markdown: str) -> str:
@@ -97,9 +106,22 @@ class BuddyWidget(QWidget):
     _orb_signal = Signal()
 
     def __init__(
-        self, tr: Translator, assistant_name: str, ptt_key: str, width: int, height: int, mode: str = "orb"
+        self,
+        tr: Translator,
+        assistant_name: str,
+        ptt_key: str,
+        width: int,
+        height: int,
+        mode: str = "orb",
+        compact_orb: bool | str = "auto",
     ):
         super().__init__()
+        self._compact_orb_setting = compact_orb
+        self._preferred_panel_size = (width, height)
+        self._screen_connected = False
+        screen = self.screen().availableGeometry()
+        compact_orb = compact_for_screen(screen.width(), screen.height(), compact_orb)
+        self._orb_size = (64, 64) if compact_orb else (ORB_W, ORB_H)
         self._mode = "panel"
         self._panel_size = (width, height)
         self._orb_signal.connect(lambda: self.set_mode("orb"))
@@ -128,11 +150,11 @@ class BuddyWidget(QWidget):
         # ---- orb (avatar + last words), the in-game default ---------------
         self.orb_root = QWidget()
         self.orb_root.setObjectName("orb")
-        self.orb_root.setFixedSize(ORB_W, ORB_H)
+        self.orb_root.setFixedSize(*self._orb_size)
         orb_layout = QHBoxLayout(self.orb_root)
-        orb_layout.setContentsMargins(10, 8, 12, 8)
+        orb_layout.setContentsMargins(*((4, 4, 4, 4) if compact_orb else (10, 8, 12, 8)))
         orb_layout.setSpacing(10)
-        self.orb_avatar = Avatar(64)
+        self.orb_avatar = Avatar(56 if compact_orb else 64)
         self.orb_avatar.setToolTip(tr("panel_mode"))
         self.orb_avatar.clicked.connect(lambda: self.set_mode("panel"))
         self.caption = QLabel("")
@@ -142,6 +164,7 @@ class BuddyWidget(QWidget):
         self.caption.setTextFormat(Qt.PlainText)
         orb_layout.addWidget(self.orb_avatar)
         orb_layout.addWidget(self.caption, 1)
+        self.caption.setVisible(not compact_orb)
         self.orb_root.hide()
         outer.addWidget(self.orb_root)
         self._caption_timer = QTimer(self)
@@ -245,6 +268,45 @@ class BuddyWidget(QWidget):
         self._input_row = row
         if mode == "orb":
             self.set_mode("orb")
+        for screen in QGuiApplication.screens():
+            self._watch_screen(screen)
+        QGuiApplication.instance().screenAdded.connect(self._watch_screen)
+        self._adapt_to_screen()
+
+    def _watch_screen(self, screen) -> None:
+        screen.availableGeometryChanged.connect(self._adapt_to_screen)
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        if not self._screen_connected and self.windowHandle():
+            self.windowHandle().screenChanged.connect(self._adapt_to_screen)
+            self._screen_connected = True
+        self._adapt_to_screen()
+
+    def _adapt_to_screen(self, *_args) -> None:
+        screen = self.screen()
+        if screen is None:
+            return
+        area = screen.availableGeometry()
+        compact = compact_for_screen(area.width(), area.height(), self._compact_orb_setting)
+        self._orb_size = (64, 64) if compact else (ORB_W, ORB_H)
+        self.orb_root.setFixedSize(*self._orb_size)
+        self.orb_root.layout().setContentsMargins(*((4, 4, 4, 4) if compact else (10, 8, 12, 8)))
+        self.orb_avatar.set_size(56 if compact else 64)
+        self.caption.setVisible(not compact)
+        self._panel_size = fit_panel(*self._preferred_panel_size, area.width(), area.height())
+        if self._mode == "orb":
+            self.setMinimumSize(*self._orb_size)
+            self.resize(*self._orb_size)
+            self.setMask(QRegion(0, 0, *self._orb_size))
+        else:
+            self.setMinimumSize(min(300, self._panel_size[0]), min(160, self._panel_size[1]))
+            self.resize(*self._panel_size)
+        if self.isVisible():
+            self.move(
+                max(area.left(), min(self.x(), area.right() - self.width() + 1)),
+                max(area.top(), min(self.y(), area.bottom() - self.height() + 1)),
+            )
 
     # ---- orb / panel ---------------------------------------------------------
     @property
@@ -261,9 +323,9 @@ class BuddyWidget(QWidget):
             self._panel_size = (self.width(), self.height())
             self.root.hide()
             self.orb_root.show()
-            self.setMinimumSize(ORB_W, ORB_H)
-            self.resize(ORB_W, ORB_H)
-            self.setMask(QRegion(0, 0, ORB_W, ORB_H))  # clicks outside the orb reach the game
+            self.setMinimumSize(*self._orb_size)
+            self.resize(*self._orb_size)
+            self.setMask(QRegion(0, 0, *self._orb_size))  # clicks outside the orb reach the game
         else:
             self.orb_root.hide()
             self.root.show()
@@ -273,6 +335,7 @@ class BuddyWidget(QWidget):
             self.caption.setText("")
         if self.isVisible():  # keep the right edge where it was
             self.move(max(0, top_right.x() - self.width()), self.frameGeometry().top())
+        self._adapt_to_screen()
         self.mode_changed.emit(mode)
 
     def set_caption(self, text: str, fade: bool = True) -> None:

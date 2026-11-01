@@ -108,6 +108,7 @@ class CoachConfig:
 
 @dataclass
 class UIConfig:
+    compact_orb: bool | str = "auto"  # auto adapts to logical screen size; true/false overrides
     width: int = 420
     height: int = 640
     opacity: float = 0.94
