@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Complete the Omarchy Quattro bar plugin with Buddy's themed head, explicit engine startup, AI settings and game-window controls.
+- Use Buddy's head in the desktop application launcher as well as the tray.
+- Add marketplace preview, dependency/setup/removal documentation and a submission draft.
+- Back up compositor files changed by installation and remove owned includes during uninstall.
+- Reuse existing virtualenvs during updates and constrain PyAV for local transcription compatibility.
+
 ## 0.3.1
 
 - **GNOME and KDE Wayland get game vision**: new `portal` capture backend (whole screen) through `spectacle`, `gnome-screenshot` or the `org.freedesktop.portal.Screenshot` D-Bus portal (jeepney). Picked automatically from `XDG_CURRENT_DESKTOP`; `gamebuddy doctor` shows which backend is in use.

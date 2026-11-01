@@ -30,6 +30,75 @@ with the panel instead.
 
 <p align="center"><img src="docs/assets/widget-fr.png" width="360" alt="GameBuddy panel with a pinned checklist"></p>
 
+## Omarchy Quattro plugin
+
+GameBuddy includes a native Omarchy **bar-widget** plus a separate Python voice/AI
+engine. Adding the plugin clones the code; it **does not install Python packages,
+run the installer or start a second Quickshell process**.
+
+```bash
+omarchy plugin add https://github.com/Roddygithub/gamebuddy.git --enable
+cd ~/.config/omarchy/plugins/io.github.roddygithub.gamebuddy
+# Review this script before running it. It may ask sudo for missing system packages.
+./install.sh
+gamebuddy doctor
+gamebuddy
+```
+
+Configure a provider in the first-run wizard (a signed-in Codex CLI, your own API
+key, or a local Ollama server). The bar head follows the shell colors; left-click
+starts/shows/hides Buddy, right-click opens AI settings, and middle-click selects
+the game window. The icon dims when the engine is stopped and uses the bar accent
+while listening. Its tooltip explains when the engine is missing. The app's
+independent tray icon remains available; use Omarchy's tray management to hide it
+if you prefer the bar widget alone.
+
+```bash
+omarchy bar move io.github.roddygithub.gamebuddy --section right
+omarchy plugin disable io.github.roddygithub.gamebuddy
+omarchy plugin enable io.github.roddygithub.gamebuddy
+```
+
+### Dependencies and setup effects
+
+The bar requires Omarchy Quattro/Quickshell, its shipped `qs.Ui` components, a POSIX
+shell, and the GameBuddy command. It checks engine status every five seconds,
+without overlapping checks. Voice/AI calls and microphone capture run only in the
+external engine. The engine requires Python ≥3.11, Qt/PySide6, PortAudio and the
+Python packages declared in `pyproject.toml`; Hyprland vision uses `hyprctl`/`grim`.
+The installer adds faster-whisper for local transcription and espeak-ng for local
+speech. Piper and its voice model, voxtype, Codex, Ollama and API accounts are
+optional and must be installed/configured separately when chosen. A compatible
+PyAV version is constrained for faster-whisper.
+
+`./install.sh` uses the distro package manager with sudo **only** for missing system
+packages. Everything else is user-owned: a venv, command link, desktop entry,
+symbolic icon, systemd user units and compositor snippets. It backs up existing
+compositor files it changes, adds a GameBuddy include if needed, reloads the
+compositor, and enables a daily update-check timer. The widget autostart service
+is installed but not enabled. The default update policy is notification only;
+`general.auto_update = "off"` disables checks. Removing the plugin alone leaves
+the standalone app, configuration, database and user services in place.
+
+### Removal
+
+For full removal, uninstall the engine **before** removing the cloned plugin:
+
+```bash
+cd ~/.config/omarchy/plugins/io.github.roddygithub.gamebuddy
+./install.sh uninstall
+omarchy plugin remove io.github.roddygithub.gamebuddy --yes
+```
+
+Uninstall stops the app/update timer, removes its installed files and exact
+GameBuddy compositor includes, and keeps your configuration and conversation
+DB. OS packages installed by the package manager are not automatically removed.
+To remove just the bar widget, use `omarchy plugin remove` alone.
+
+The plugin and its own preview are MIT licensed. The preview uses demo UI text,
+not a game screenshot. See [plugin validation and publishing](docs/OMARCHY-PLUGIN.md)
+for the reviewed checks and listing metadata.
+
 ## Features
 
 - **Voice-first** — hold `Alt+V` (configurable) to talk, or turn on hands-free listening. Typing works too.
@@ -85,7 +154,7 @@ Optional Omarchy bar widget (an icon that shows/hides Buddy):
 
 ```bash
 omarchy plugin add https://github.com/Roddygithub/gamebuddy.git --enable
-omarchy bar put gamebuddy --after omarchy.clock
+omarchy bar put io.github.roddygithub.gamebuddy --after omarchy.clock
 ```
 
 ### Manual install (any distro)

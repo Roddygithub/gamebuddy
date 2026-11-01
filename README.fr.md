@@ -26,6 +26,44 @@ checklist qu'il épingle) ouvre le panneau complet : contenu épinglé, conversa
 
 <p align="center"><img src="docs/assets/widget-fr.png" width="360" alt="Panneau GameBuddy avec une checklist épinglée"></p>
 
+## Plugin Omarchy Quattro
+
+Le dépôt fournit un **widget de barre natif** qui pilote le moteur Python séparé.
+L’ajout du plugin ne lance pas l’installeur et n’installe aucun paquet en arrière-plan.
+
+```bash
+omarchy plugin add https://github.com/Roddygithub/gamebuddy.git --enable
+cd ~/.config/omarchy/plugins/io.github.roddygithub.gamebuddy
+./install.sh                 # à lire avant : sudo uniquement pour les paquets système manquants
+gamebuddy doctor
+gamebuddy                    # assistant de configuration au premier lancement
+```
+
+Clic gauche sur la tête : démarrer/afficher/masquer Buddy. Clic droit : réglages IA.
+Clic du milieu : choisir le jeu. L’icône reprend les couleurs de la barre, s’atténue
+quand le moteur est arrêté et change de couleur pendant l’écoute. Le systray de
+l’application reste indépendant ; tu peux masquer son icône si elle fait doublon.
+
+L’installeur crée un virtualenv, une commande, une entrée de bureau, des unités
+systemd utilisateur et les raccourcis du compositeur. Il sauvegarde les fichiers
+du compositeur qu’il modifie. Le timer de vérification quotidienne est activé
+(notification seulement par défaut), mais pas le démarrage automatique de Buddy.
+Codex, les comptes API, Ollama, voxtype ou Piper restent à configurer séparément
+selon le fournisseur choisi. Python ≥3.11, Qt/PySide6, PortAudio et les dépendances
+Python du projet sont nécessaires au moteur ; la capture Hyprland utilise grim.
+
+Suppression complète (garde la configuration et la base de conversations) :
+
+```bash
+cd ~/.config/omarchy/plugins/io.github.roddygithub.gamebuddy
+./install.sh uninstall
+omarchy plugin remove io.github.roddygithub.gamebuddy --yes
+```
+
+Supprimer uniquement le plugin retire son widget de barre ; l’application et ses
+services restent installés. Les paquets système ne sont pas supprimés automatiquement.
+Détails : [validation et publication du plugin](docs/OMARCHY-PLUGIN.md).
+
 ## Fonctionnalités
 
 - **Voix d'abord** — maintiens `Alt+V` (configurable) pour parler, ou active l'écoute mains libres. Le clavier marche aussi.
@@ -83,7 +121,7 @@ Widget de barre Omarchy (une icône qui affiche/masque Buddy) :
 
 ```bash
 omarchy plugin add https://github.com/Roddygithub/gamebuddy.git --enable
-omarchy bar put gamebuddy --after omarchy.clock
+omarchy bar put io.github.roddygithub.gamebuddy --after omarchy.clock
 ```
 
 ### Installation manuelle (toute distribution)

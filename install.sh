@@ -17,25 +17,46 @@ SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 say()  { printf '\033[1;35m[gamebuddy]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[gamebuddy]\033[0m %s\n' "$*" >&2; }
+backup_file() { [ ! -f "$1" ] || cp -p -- "$1" "$1.bak.$(date +%Y%m%d-%H%M%S)"; }
 
 uninstall() {
   say "removing venv, launcher, desktop entry and service"
+  python3 - "$HYPR_DIR" "$SWAY_DIR" <<'PYREMOVE'
+import shutil
+import sys
+import time
+from pathlib import Path
+hypr, sway = map(Path, sys.argv[1:])
+for path, owned in (
+    (hypr / "hyprland.conf", {f"source = {hypr / 'gamebuddy.conf'}"}),
+    (hypr / "hyprland.lua", {'require("hypr.gamebuddy")', "require('hypr.gamebuddy')"}),
+    (sway / "config", {f"include {sway / 'gamebuddy.conf'}"}),
+):
+    if not path.is_file():
+        continue
+    text = path.read_text()
+    clean = "".join(line for line in text.splitlines(keepends=True) if line.strip() not in owned)
+    if clean != text:
+        shutil.copy2(path, f"{path}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+        path.write_text(clean)
+PYREMOVE
   systemctl --user disable --now gamebuddy.service gamebuddy-update.timer 2>/dev/null || true
+  if [ -x "$BIN/gamebuddy" ]; then "$BIN/gamebuddy" quit >/dev/null 2>&1 || true; fi
   rm -rf "$VENV" "$BIN/gamebuddy" "$PREFIX/source_dir" "$TRAY_ICON" \
     "$HOME/.config/systemd/user/gamebuddy.service" \
     "$HOME/.config/systemd/user/gamebuddy-update.service" "$HOME/.config/systemd/user/gamebuddy-update.timer" \
     "${XDG_DATA_HOME:-$HOME/.local/share}/applications/gamebuddy.desktop"
   if [ -f "$HYPR_SNIPPET" ]; then
     rm -f "$HYPR_SNIPPET"
-    warn "remove the 'source = $HYPR_SNIPPET' line from your hyprland.conf"
+    say "removed GameBuddy Hyprland include"
   fi
   if [ -f "$HYPR_DIR/gamebuddy.lua" ]; then
     rm -f "$HYPR_DIR/gamebuddy.lua"
-    warn "remove require(\"hypr.gamebuddy\") from your hyprland.lua"
+    say "removed GameBuddy Lua include"
   fi
   if [ -f "$SWAY_SNIPPET" ]; then
     rm -f "$SWAY_SNIPPET"
-    warn "remove the 'include $SWAY_SNIPPET' line from your sway config"
+    say "removed GameBuddy sway include"
   fi
   say "kept your config (~/.config/gamebuddy) and database (~/.local/share/gamebuddy/gamebuddy.db)"
   exit 0
@@ -85,9 +106,9 @@ fi
 
 # ---- virtualenv ------------------------------------------------------------
 mkdir -p "$PREFIX" "$BIN"
-if command -v uv >/dev/null; then
-  say "creating venv with uv"
-  uv venv --quiet "$VENV"
+if command -v uv >/dev/null && uv --version >/dev/null 2>&1; then
+  say "preparing venv with uv"
+  if [ ! -x "$VENV/bin/python" ]; then uv venv --quiet "$VENV"; fi
   uv pip install --quiet --python "$VENV/bin/python" "$SRC_DIR[local]"
 else
   say "creating venv with python -m venv"
@@ -115,14 +136,18 @@ if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || [ -d "$HYPR_DIR" ]; then
   mkdir -p "$HYPR_DIR"
   if [ -f "$HYPR_DIR/hyprland.lua" ]; then
     HYPR_SNIPPET="$HYPR_DIR/gamebuddy.lua"
+    backup_file "$HYPR_SNIPPET"
     "$VENV/bin/gamebuddy" hyprland-config --syntax lua > "$HYPR_SNIPPET"
     if ! grep -q 'hypr.gamebuddy' "$HYPR_DIR/hyprland.lua"; then
+      backup_file "$HYPR_DIR/hyprland.lua"
       printf '\n-- GameBuddy overlay and shortcuts\nrequire("hypr.gamebuddy")\n' >> "$HYPR_DIR/hyprland.lua"
     fi
   else
+    backup_file "$HYPR_SNIPPET"
     "$VENV/bin/gamebuddy" hyprland-config > "$HYPR_SNIPPET"
     MAIN="$HYPR_DIR/hyprland.conf"
     if [ -f "$MAIN" ] && ! grep -q "gamebuddy.conf" "$MAIN"; then
+      backup_file "$MAIN"
       printf '\n# GameBuddy overlay rules and keybinds\nsource = %s\n' "$HYPR_SNIPPET" >> "$MAIN"
       say "added 'source = $HYPR_SNIPPET' to hyprland.conf"
     fi
@@ -133,8 +158,10 @@ fi
 # ---- sway rule + binds -----------------------------------------------------
 if [ -n "${SWAYSOCK:-}" ] || [ -f "$SWAY_DIR/config" ]; then
   mkdir -p "$SWAY_DIR"
+  backup_file "$SWAY_SNIPPET"
   "$VENV/bin/gamebuddy" sway-config > "$SWAY_SNIPPET"
   if [ -f "$SWAY_DIR/config" ] && ! grep -q "gamebuddy.conf" "$SWAY_DIR/config"; then
+    backup_file "$SWAY_DIR/config"
     printf '\n# GameBuddy overlay rule and keybinds\ninclude %s\n' "$SWAY_SNIPPET" >> "$SWAY_DIR/config"
     say "added 'include $SWAY_SNIPPET' to your sway config"
   fi

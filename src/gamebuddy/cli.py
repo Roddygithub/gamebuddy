@@ -266,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
     coach.add_argument("action", choices=["on", "off", "toggle"], nargs="?", default="toggle")
     sub.add_parser("unpin")
     sub.add_parser("settings")
+    sub.add_parser("ai-settings", help="open the AI settings tab")
     sub.add_parser("quit")
     cap = sub.add_parser("capture", help="capture a window to a file (debug)")
     cap.add_argument("--id", default="", help="window id (default: first non-gamebuddy window)")
@@ -296,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
         return _send({"cmd": "ptt", "action": args.action})
     if cmd == "ask":
         return _send({"cmd": "ask", "text": " ".join(args.text)})
-    if cmd in ("toggle", "show", "hide", "status", "unpin", "settings", "quit"):
+    if cmd in ("toggle", "show", "hide", "status", "unpin", "settings", "ai-settings", "quit"):
         return _send({"cmd": cmd})
     if cmd == "windows":
         if is_running():
