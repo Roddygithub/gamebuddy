@@ -97,6 +97,7 @@ class GameBuddyApp(QObject):
 
     def _connect(self) -> None:
         w, b = self.widget, self.bridge
+        b.stream_started.connect(w.begin_stream)
         w.send_text.connect(self.ask_text)
         w.ptt_pressed.connect(self.ptt_start)
         w.ptt_released.connect(self.ptt_stop)
@@ -399,7 +400,7 @@ class GameBuddyApp(QObject):
             self.bridge.status.emit("ready")
             return
         self.bridge.user_text.emit(text)
-        QTimer.singleShot(0, self.widget.begin_stream)
+        self.bridge.stream_started.emit()
         shot = self.capture_game()
         try:
             self.kin.ask(text, shot)
@@ -498,7 +499,17 @@ class GameBuddyApp(QObject):
             self.kin.reset_provider()
             if self.coach:
                 self.coach._provider = None
+            hands_free = bool(self.listener and self.listener.active)
+            if self.listener:
+                self.listener.stop()
             self.listener = None
+            if self.recorder:
+                if self.recorder.recording:
+                    self.recorder.stop()
+                    self.widget.set_recording(False)
+                self.recorder = None
+            if hands_free:
+                self.set_hands_free(True)
             self._apply_theme()
             self.widget.title.setText(self.cfg.general.assistant_name)
             self.widget.set_window_title(self.window.title if self.window else None)

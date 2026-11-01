@@ -59,3 +59,40 @@ def test_bad_json(tmp_path):
             assert b'"ok": false' in s.recv(1024)
     finally:
         srv.stop()
+
+
+def test_invalid_requests_do_not_disconnect_client():
+    import json
+    import socket
+
+    path = Path(tempfile.mkdtemp(prefix="gb", dir="/tmp")) / "s.sock"
+    srv = IPCServer(lambda r: {"ok": True}, path)
+    srv.start()
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect(str(path))
+            with s.makefile("rb") as reader:
+                for payload in (b"[]", b"null", b"42", b'"hello"', b"\xff"):
+                    s.sendall(payload + b"\n")
+                    assert json.loads(reader.readline())["ok"] is False
+                s.sendall(b'{"cmd": "ping"}\n')
+                assert json.loads(reader.readline())["ok"] is True
+    finally:
+        srv.stop()
+
+
+def test_stopping_rejected_instance_preserves_active_socket():
+    import pytest
+
+    path = Path(tempfile.mkdtemp(prefix="gb", dir="/tmp")) / "s.sock"
+    srv = IPCServer(lambda r: {"ok": True}, path)
+    rejected = IPCServer(lambda r: {"ok": True}, path)
+    srv.start()
+    try:
+        with pytest.raises(RuntimeError):
+            rejected.start()
+        rejected.stop()
+        assert is_running(path)
+    finally:
+        srv.stop()

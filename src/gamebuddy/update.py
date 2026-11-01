@@ -42,7 +42,9 @@ def fetch_latest(timeout: float = 6.0) -> dict:
     headers = {"Accept": "application/vnd.github+json", "User-Agent": f"gamebuddy/{__version__}"}
     resp = httpx.get(RELEASES_API, headers=headers, timeout=timeout, follow_redirects=True)
     if resp.status_code == 404:  # no release yet → fall back to tags
-        tags = httpx.get(f"https://api.github.com/repos/{REPO}/tags", headers=headers, timeout=timeout).json()
+        tags_resp = httpx.get(f"https://api.github.com/repos/{REPO}/tags", headers=headers, timeout=timeout)
+        tags_resp.raise_for_status()
+        tags = tags_resp.json()
         if not tags:
             raise UpdateError("no releases or tags")
         tag = tags[0]["name"]
@@ -122,15 +124,15 @@ def run_update(only_if_available: bool = False, quiet: bool = False, log=print) 
             return 0
     tag = info["tag"]
     src = source_dir()
-    if not (src / ".git").is_dir():
+    if not (src / ".git").exists():  # .git is a file in a linked worktree
         src.parent.mkdir(parents=True, exist_ok=True)
-        if src.exists():
-            shutil.rmtree(src)
+        if src.exists() and (not src.is_dir() or any(src.iterdir())):
+            raise UpdateError(f"refusing to replace non-git source directory: {src}")
         log(f"cloning {GIT_URL} → {src}")
         _git("clone", "--quiet", GIT_URL, str(src), cwd=src.parent)
     log(f"fetching {tag}")
     _git("fetch", "--quiet", "--tags", "--force", "origin", cwd=src)
-    _git("checkout", "--quiet", tag, cwd=src)
+    _git("checkout", "--quiet", "--detach", f"refs/tags/{tag}", cwd=src)
     log("running install.sh")
     env = {**os.environ, "GAMEBUDDY_UPDATING": "1"}
     proc = subprocess.run(["bash", str(src / "install.sh")], cwd=src, env=env, check=False)

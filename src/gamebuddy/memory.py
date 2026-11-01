@@ -182,9 +182,23 @@ class Store:
 
 
 def _trim_dangling_tools(msgs: list[Message]) -> list[Message]:
-    """Drop a leading tool result without its assistant call, and a trailing call without result."""
-    while msgs and msgs[0].role == "tool":
-        msgs.pop(0)
-    if msgs and msgs[-1].role == "assistant" and msgs[-1].tool_calls:
-        msgs.pop()
-    return msgs
+    """Replay only complete tool exchanges, including after an interrupted turn."""
+    replay: list[Message] = []
+    i = 0
+    while i < len(msgs):
+        msg = msgs[i]
+        i += 1
+        if msg.role == "tool":  # its assistant call fell outside the history window
+            continue
+        if msg.role == "assistant" and msg.tool_calls:
+            results = []
+            while i < len(msgs) and msgs[i].role == "tool":
+                results.append(msgs[i])
+                i += 1
+            expected = {call.id for call in msg.tool_calls}
+            if len(results) != len(msg.tool_calls) or {r.tool_call_id for r in results} != expected:
+                continue
+            replay.extend([msg, *results])
+        else:
+            replay.append(msg)
+    return replay

@@ -83,3 +83,32 @@ def test_kin_reports_errors(tmp_path):
     kin = Kin(Config(), Store(tmp_path / "db.sqlite"), KinCallbacks(on_error=errors.append), provider=Boom())
     assert kin.ask("hello") == ""
     assert errors == ["api down"]
+
+
+def test_partial_tool_exchange_is_not_replayed(tmp_path):
+    store = Store(tmp_path / "db.sqlite")
+    try:
+        store.add_message(Message(role="user", content="remember these"))
+        store.add_message(
+            Message(
+                role="assistant", tool_calls=[ToolCall("a", "remember", {}), ToolCall("b", "remember", {})]
+            )
+        )
+        store.add_message(Message(role="tool", tool_call_id="a", content="saved"))
+        # A crash before result b must not poison this or later requests.
+        assert [m.role for m in store.recent_messages()] == ["user"]
+        store.add_message(Message(role="user", content="retry"))
+        assert [m.content for m in store.recent_messages()] == ["remember these", "retry"]
+    finally:
+        store.close()
+
+
+def test_history_window_drops_orphan_tool_results(tmp_path):
+    store = Store(tmp_path / "db.sqlite")
+    try:
+        store.add_message(Message(role="assistant", tool_calls=[ToolCall("a", "remember", {})]))
+        store.add_message(Message(role="tool", tool_call_id="a", content="saved"))
+        store.add_message(Message(role="assistant", content="done"))
+        assert [m.content for m in store.recent_messages(limit=2)] == ["done"]
+    finally:
+        store.close()
