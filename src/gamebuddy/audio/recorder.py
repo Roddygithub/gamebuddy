@@ -97,7 +97,12 @@ class Recorder:
             callback=callback,
             blocksize=int(self.sample_rate * 0.03),
         )
-        self._stream.start()
+        try:
+            self._stream.start()
+        except Exception:
+            self._stream.close()
+            self._stream = None
+            raise
         self.started_at = time.time()
 
     def stop(self) -> bytes:
@@ -165,7 +170,12 @@ class HandsFreeListener:
             callback=self._callback,
             blocksize=int(self.sample_rate * 0.03),
         )
-        self._stream.start()
+        try:
+            self._stream.start()
+        except Exception:
+            self._stream.close()
+            self._stream = None
+            raise
 
     def stop(self) -> None:
         if self._stream is None:

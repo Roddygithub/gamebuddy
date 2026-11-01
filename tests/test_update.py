@@ -78,3 +78,30 @@ def test_run_update_requires_git(monkeypatch):
     monkeypatch.setattr(update.shutil, "which", lambda name: None)
     with pytest.raises(update.UpdateError):
         update.run_update()
+
+
+def test_update_preserves_non_git_source(monkeypatch, tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    valuable = source / "notes.txt"
+    valuable.write_text("keep me")
+    monkeypatch.setattr(update, "fetch_latest", _fake_latest("99.0.0"))
+    monkeypatch.setattr(update.shutil, "which", lambda name: "/usr/bin/git")
+    monkeypatch.setattr(update, "source_dir", lambda: source)
+    with pytest.raises(update.UpdateError, match="refusing to replace"):
+        update.run_update(log=lambda *_: None)
+    assert valuable.read_text() == "keep me"
+
+
+def test_update_recognizes_worktree(monkeypatch, tmp_path):
+    (tmp_path / ".git").write_text("gitdir: /some/worktree")
+    calls = []
+    monkeypatch.setattr(update, "fetch_latest", _fake_latest("99.0.0"))
+    monkeypatch.setattr(update.shutil, "which", lambda name: "/usr/bin/git")
+    monkeypatch.setattr(update, "source_dir", lambda: tmp_path)
+    monkeypatch.setattr(update, "_git", lambda *args, **kw: calls.append(args))
+    monkeypatch.setattr(update, "_restart_widget", lambda log: None)
+    monkeypatch.setattr(update.subprocess, "run", lambda *a, **kw: type("Proc", (), {"returncode": 0})())
+    assert update.run_update(log=lambda *_: None) == 0
+    assert [c[0] for c in calls] == ["fetch", "checkout"]
+    assert calls[-1][-1] == "refs/tags/v99.0.0"

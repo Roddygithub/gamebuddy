@@ -1,6 +1,7 @@
 import os
 
 os.environ["GAMEBUDDY_NO_UPDATE_CHECK"] = "1"
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 import pathlib
 import tempfile
 

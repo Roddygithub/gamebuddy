@@ -23,6 +23,7 @@ from typing import Any
 from gamebuddy.paths import socket_path
 
 Handler = Callable[[dict[str, Any]], dict[str, Any]]
+MAX_MESSAGE_BYTES = 1024 * 1024
 
 
 class IPCServer:
@@ -34,9 +35,13 @@ class IPCServer:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
+        self._bound = False
 
     # ---- lifecycle -------------------------------------------------------
     def start(self) -> None:
+        if self._bound:
+            raise RuntimeError("IPC server already started")
+        self._stop.clear()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.path.exists():
             # Stale socket from a previous crash? Probe it first.
@@ -45,6 +50,7 @@ class IPCServer:
             self.path.unlink()
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._sock.bind(str(self.path))
+        self._bound = True
         os.chmod(self.path, 0o600)
         self._sock.listen(8)
         self._sock.settimeout(0.5)
@@ -66,10 +72,13 @@ class IPCServer:
                     pass
             self._subscribers.clear()
         try:
-            if self.path.exists():
+            if self._bound and self.path.exists():
                 self.path.unlink()
         except OSError:
             pass
+        self._bound = False
+        if self._thread and self._thread is not threading.current_thread():
+            self._thread.join(timeout=1)
 
     # ---- events ----------------------------------------------------------
     def broadcast(self, event: str, **payload: Any) -> None:
@@ -105,17 +114,23 @@ class IPCServer:
                 if not chunk:
                     break
                 buf += chunk
+                if any(len(line) > MAX_MESSAGE_BYTES for line in buf.split(b"\n")):
+                    conn.sendall(b'{"ok": false, "error": "message too large"}\n')
+                    break
                 while b"\n" in buf:
                     line, buf = buf.split(b"\n", 1)
                     if not line.strip():
                         continue
                     try:
                         req = json.loads(line)
-                    except json.JSONDecodeError:
+                    except (ValueError, UnicodeDecodeError):
                         conn.sendall(b'{"ok": false, "error": "bad json"}\n')
                         continue
+                    if not isinstance(req, dict):
+                        conn.sendall(b'{"ok": false, "error": "expected JSON object"}\n')
+                        continue
                     if req.get("cmd") == "subscribe":
-                        conn.settimeout(None)
+                        # A slow subscriber must not block broadcast (or shutdown) forever.
                         with self._lock:
                             self._subscribers.append(conn)
                         conn.sendall(b'{"ok": true, "subscribed": true}\n')

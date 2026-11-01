@@ -57,3 +57,25 @@ def test_all_languages_have_all_keys():
     base = set(_STRINGS["en"])
     for lang, table in _STRINGS.items():
         assert base <= set(table), lang
+
+
+def test_failed_save_preserves_config_and_removes_temporary(tmp_path, monkeypatch):
+    import pytest
+
+    from gamebuddy import config
+
+    path = save_config(Config(), tmp_path / "config.toml")
+    original = path.read_bytes()
+
+    def fail_dump(data, fh):
+        import os
+
+        assert os.fstat(fh.fileno()).st_mode & 0o777 == 0o600
+        fh.write(b"partial")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(config.tomli_w, "dump", fail_dump)
+    with pytest.raises(OSError, match="disk full"):
+        save_config(Config(), path)
+    assert path.read_bytes() == original
+    assert not list(tmp_path.glob(".config.toml.*"))

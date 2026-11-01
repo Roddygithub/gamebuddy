@@ -78,3 +78,64 @@ def test_app_text_roundtrip(qapp, tmp_path, fake_provider, monkeypatch):
     finally:
         gb.ipc.stop()
         gb.store.close()
+
+
+def test_voice_stream_begins_on_gui_thread(qapp, monkeypatch, fake_provider):
+    import threading
+
+    from PySide6.QtCore import QThread
+
+    from gamebuddy.config import Config
+    from gamebuddy.speech import stt
+    from gamebuddy.ui.app import GameBuddyApp
+    from gamebuddy.ui.widget import BuddyWidget
+
+    threads = []
+    original = BuddyWidget.begin_stream
+
+    def begin_stream(widget):
+        threads.append(QThread.currentThread())
+        original(widget)
+
+    monkeypatch.setattr(BuddyWidget, "begin_stream", begin_stream)
+    monkeypatch.setattr(stt, "transcribe", lambda wav, cfg: "hello")
+    cfg = Config()
+    cfg.capture.backend = "none"
+    cfg.speech.tts = "none"
+    gb = GameBuddyApp(cfg)
+    gb.kin._provider = fake_provider([{"text": "hello back"}])
+    try:
+        worker = threading.Thread(target=gb._transcribe_and_ask, args=(b"wav",))
+        worker.start()
+        worker.join(timeout=3)
+        assert not worker.is_alive()
+        qapp.processEvents()
+        assert threads == [qapp.thread()]
+        assert gb.widget._streaming_label is None
+    finally:
+        gb.widget.close()
+        gb.store.close()
+
+
+def test_settings_release_microphones_before_recreating_listener(qapp, monkeypatch):
+    from types import SimpleNamespace
+
+    from gamebuddy.config import Config
+    from gamebuddy.ui import settings
+    from gamebuddy.ui.app import GameBuddyApp
+
+    events = []
+    monkeypatch.setattr(settings, "SettingsDialog", lambda *a: SimpleNamespace(exec=lambda: True))
+    cfg = Config()
+    cfg.capture.backend = "none"
+    gb = GameBuddyApp(cfg)
+    gb.listener = SimpleNamespace(active=True, stop=lambda: events.append("listener stopped"))
+    gb.recorder = SimpleNamespace(recording=True, stop=lambda: events.append("recorder stopped"))
+    monkeypatch.setattr(gb, "set_hands_free", lambda on: events.append(("listen", on)))
+    try:
+        gb.open_settings()
+        assert events == ["listener stopped", "recorder stopped", ("listen", True)]
+        assert gb.listener is None and gb.recorder is None
+    finally:
+        gb.widget.close()
+        gb.store.close()

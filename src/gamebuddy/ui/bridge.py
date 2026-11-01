@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Signal
 class Bridge(QObject):
     status = Signal(str)  # i18n key
     user_text = Signal(str)
+    stream_started = Signal()
     text_delta = Signal(str)
     reply_done = Signal(str)
     pin = Signal(str, str, str)

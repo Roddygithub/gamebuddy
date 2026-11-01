@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import tempfile
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
@@ -188,10 +189,14 @@ def save_config(cfg: Config, path: Path | None = None) -> Path:
     ensure_dirs()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = cfg.to_dict()
-    with path.open("wb") as fh:
-        tomli_w.dump(data, fh)
+    # mkstemp creates the file with mode 0600 before any secret is written.
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
-        os.chmod(path, 0o600)  # may contain an API key
-    except OSError:
-        pass
+        with os.fdopen(fd, "wb") as fh:
+            tomli_w.dump(data, fh)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
     return path
