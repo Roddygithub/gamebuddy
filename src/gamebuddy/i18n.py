@@ -10,6 +10,9 @@ import os
 
 _STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        "update_available": "GameBuddy {version} is available — update from the tray menu or run `gamebuddy update`.",
+        "update_now": "Update to {version}",
+        "update_started": "Updating… the widget restarts by itself when done.",
         "ready": "Ready when you are",
         "listening": "Listening…",
         "transcribing": "Understanding…",
@@ -59,6 +62,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Noted for next time.",
     },
     "fr": {
+        "update_available": "GameBuddy {version} est disponible — mets à jour depuis le menu de la barre ou lance `gamebuddy update`.",
+        "update_now": "Mettre à jour vers {version}",
+        "update_started": "Mise à jour en cours… le widget redémarre tout seul à la fin.",
         "ready": "Prêt quand tu veux",
         "listening": "J'écoute…",
         "transcribing": "Je comprends…",
@@ -108,6 +114,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Noté pour la prochaine fois.",
     },
     "de": {
+        "update_available": "GameBuddy {version} ist verfügbar — über das Tray-Menü aktualisieren oder `gamebuddy update` ausführen.",
+        "update_now": "Auf {version} aktualisieren",
+        "update_started": "Aktualisierung läuft… das Widget startet danach von selbst neu.",
         "ready": "Bereit, wenn du es bist",
         "listening": "Ich höre zu…",
         "transcribing": "Ich verstehe…",
@@ -157,6 +166,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Für das nächste Mal notiert.",
     },
     "es": {
+        "update_available": "GameBuddy {version} está disponible — actualiza desde el menú de la bandeja o ejecuta `gamebuddy update`.",
+        "update_now": "Actualizar a {version}",
+        "update_started": "Actualizando… el widget se reinicia solo al terminar.",
         "ready": "Listo cuando quieras",
         "listening": "Escuchando…",
         "transcribing": "Entendiendo…",
@@ -206,6 +218,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Anotado para la próxima vez.",
     },
     "it": {
+        "update_available": "GameBuddy {version} è disponibile — aggiorna dal menu della tray o esegui `gamebuddy update`.",
+        "update_now": "Aggiorna a {version}",
+        "update_started": "Aggiornamento in corso… il widget si riavvia da solo alla fine.",
         "ready": "Pronto quando vuoi",
         "listening": "Ti ascolto…",
         "transcribing": "Sto capendo…",
@@ -255,6 +270,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "memory_saved": "Segnato per la prossima volta.",
     },
     "pt-BR": {
+        "update_available": "GameBuddy {version} está disponível — atualize pelo menu da bandeja ou rode `gamebuddy update`.",
+        "update_now": "Atualizar para {version}",
+        "update_started": "Atualizando… o widget reinicia sozinho ao terminar.",
         "ready": "Pronto quando você quiser",
         "listening": "Ouvindo…",
         "transcribing": "Entendendo…",

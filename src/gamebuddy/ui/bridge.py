@@ -19,3 +19,4 @@ class Bridge(QObject):
     command = Signal(dict)  # IPC request to execute on the GUI thread
     window_lost = Signal()
     tool = Signal(str)
+    update_available = Signal(dict)

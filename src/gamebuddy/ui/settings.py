@@ -59,6 +59,10 @@ class SettingsDialog(QDialog):
         f.addRow(tr("onboarding_lang"), self.language)
         f.addRow("Name", self.name)
         f.addRow("Personality", self.personality)
+        self.auto_update = QComboBox()
+        self.auto_update.addItems(["off", "notify", "auto"])
+        self.auto_update.setCurrentText(cfg.general.auto_update)
+        f.addRow("Updates", self.auto_update)
         f.addRow("Push-to-talk (Hyprland)", self.ptt)
         f.addRow("Opacity", self.opacity)
         f.addRow("Font size", self.font_size)
@@ -173,6 +177,7 @@ class SettingsDialog(QDialog):
         c.general.language = self.language.currentData()
         c.general.assistant_name = self.name.text().strip() or "Buddy"
         c.general.personality = self.personality.currentText()
+        c.general.auto_update = self.auto_update.currentText()
         c.hotkeys.push_to_talk = self.ptt.text().strip() or "ALT, V"
         c.ui.opacity = self.opacity.value()
         c.ui.font_size = self.font_size.value()

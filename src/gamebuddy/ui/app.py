@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import threading
 from typing import Any
 
@@ -112,6 +114,7 @@ class GameBuddyApp(QObject):
         b.pin.connect(w.show_pin)
         b.unpin.connect(w.clear_pin)
         b.error.connect(self._on_error)
+        b.update_available.connect(self._on_update_available)
         b.level.connect(w.set_level)
         b.coach_advice.connect(w.add_coach)
         b.command.connect(self._handle_command_gui)
@@ -156,6 +159,41 @@ class GameBuddyApp(QObject):
             QTimer.singleShot(300, self.run_onboarding)
         if self.cfg.coach.enabled:
             QTimer.singleShot(1000, lambda: self.set_coach(True))
+        self._update_info: dict | None = None
+        if self.cfg.general.auto_update != "off" and not os.environ.get("GAMEBUDDY_NO_UPDATE_CHECK"):
+            QTimer.singleShot(5000, self._check_update_async)
+
+    # ---- updates -------------------------------------------------------------
+    def _check_update_async(self) -> None:
+        def work() -> None:
+            try:
+                from gamebuddy.update import check_for_update
+
+                info = check_for_update()
+            except Exception as exc:  # noqa: BLE001 — offline is fine
+                log.debug("update check skipped: %s", exc)
+                return
+            if info.get("available"):
+                self.bridge.update_available.emit(info)
+
+        threading.Thread(target=work, name="update-check", daemon=True).start()
+
+    def _on_update_available(self, info: dict) -> None:
+        self._update_info = info
+        self.widget.add_bubble(self.tr("update_available", version=info["latest"]), "bro")
+        if self.tray is not None and getattr(self, "_update_action", None) is not None:
+            self._update_action.setVisible(True)
+            self._update_action.setText(self.tr("update_now", version=info["latest"]))
+
+    def update_now(self) -> None:
+        import shutil
+        import subprocess
+
+        exe = shutil.which("gamebuddy") or sys.argv[0]
+        self.widget.add_bubble(self.tr("update_started"), "bro")
+        subprocess.Popen(
+            [exe, "update"], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
 
     def quit(self) -> None:
         self.set_hands_free(False)
@@ -184,6 +222,10 @@ class GameBuddyApp(QObject):
             act = QAction(label, menu)
             act.triggered.connect(slot)
             menu.addAction(act)
+        self._update_action = QAction(self.tr("update_now", version=""), menu)
+        self._update_action.triggered.connect(self.update_now)
+        self._update_action.setVisible(False)
+        menu.insertAction(menu.actions()[-1], self._update_action)
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(
             lambda reason: self.toggle_visible() if reason == QSystemTrayIcon.Trigger else None

@@ -143,6 +143,19 @@ already downloaded. Leave `stt_model` empty to use voxtype's own config.
 
 Local, offline setup: `provider = "ollama"`, `model = "llama3.2-vision"`, `stt = "faster_whisper"` (`pip install 'gamebuddy[local]'`), `tts = "piper"`.
 
+## Updates
+
+```bash
+gamebuddy update            # pull the latest release and reinstall (restarts the widget)
+gamebuddy update --check    # just tell me
+```
+
+The installer enables a daily user timer (`gamebuddy-update.timer`). With the default
+`auto_update = "notify"` the widget shows a bubble and a tray entry when a new release exists;
+set `auto_update = "auto"` in `[general]` (or Settings → Updates) to let the timer install it,
+or `"off"` to never check. Releases are plain git tags built by GitHub Actions — no binaries,
+you always run the source you can read.
+
 ## Hyprland
 
 `gamebuddy hyprland-config` prints the rules and binds for your Hyprland version

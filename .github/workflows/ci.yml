@@ -49,7 +49,7 @@ jobs:
           assert m["schemaVersion"] == 1
           assert m["id"] == "io.github.roddygithub.gamebuddy"
           assert m["entryPoints"]["barWidget"] == "BarWidget.qml"
-          for path in ("BarWidget.qml", "README.md", "install.sh", "LICENSE"):
+          for path in ("BarWidget.qml", "README.md", "install.sh", "LICENSE", "packaging/gamebuddy-update.timer", "packaging/gamebuddy-update.service"):
               assert Path(path).is_file(), path
           PY
       - name: Shell syntax

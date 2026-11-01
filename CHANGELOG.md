@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Self-update: `gamebuddy update` fetches the latest GitHub release tag into the install source and re-runs `install.sh`, then restarts the widget. A daily systemd user timer (`gamebuddy-update.timer`) checks for releases; `general.auto_update` = `notify` (default: bubble + tray action "Update to X") | `auto` (the timer installs it) | `off`.
+- GitHub release workflow on `v*` tags (notes taken from this changelog).
+
 ## 0.2.0
 
 - **Renamed GameBro → GameBuddy.** Package, CLI (`gamebuddy`), socket, config/data dirs, Hyprland class, systemd unit and Omarchy plugin id all follow. Existing `~/.config/gamebro` and `~/.local/share/gamebro` are moved automatically on first start; re-run `./install.sh` (it replaces the old `gamebro` symlink, desktop entry, service and Hyprland snippet).

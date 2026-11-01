@@ -151,6 +151,9 @@ def doctor() -> int:
     rows.append(("config", config_file().is_file(), str(config_file())))
     rows.append(("database", db_file().is_file(), str(db_file())))
     rows.append(("widget running", is_running(), str(socket_path())))
+    rows.append(
+        ("auto-update", True, f"general.auto_update = {cfg.general.auto_update} (`gamebuddy update`)")
+    )
     v = hyprland_version()
     if v:
         rows.append(
@@ -206,6 +209,13 @@ def main(argv: list[str] | None = None) -> int:
     cap.add_argument("--id", default="", help="window id (default: first non-gamebuddy window)")
     cap.add_argument("--out", default="gamebuddy-capture.jpg")
     sub.add_parser("doctor", help="check tools, devices and keys")
+    upd = sub.add_parser("update", help="update to the latest GitHub release (git + install.sh)")
+    upd.add_argument("--check", action="store_true", help="only report whether an update exists")
+    upd.add_argument("--if-available", action="store_true", help="do nothing when already up to date")
+    upd.add_argument("--quiet", action="store_true")
+    upd.add_argument(
+        "--respect-policy", action="store_true", help='install only when general.auto_update = "auto"'
+    )
     hc = sub.add_parser("hyprland-config", help="print Hyprland rules + binds")
     hc.add_argument("--syntax", choices=["auto", "legacy", "v053", "lua"], default="auto")
     cfgp = sub.add_parser("config", help="config file helpers")
@@ -260,6 +270,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if cmd == "doctor":
         return doctor()
+    if cmd == "update":
+        from gamebuddy.update import UpdateError, check_for_update, run_update
+
+        try:
+            policy = load_config().general.auto_update
+            if args.check or (args.respect_policy and policy != "auto"):
+                if args.respect_policy and policy == "off":
+                    return 0
+                info = check_for_update(force=True)
+                if info["available"]:
+                    print(f"update available: {info['installed']} → {info['latest']}  ({info['url']})")
+                    print("run: gamebuddy update")
+                    return 10 if args.check else 0
+                if not args.quiet:
+                    print(f"gamebuddy {info['installed']} is up to date")
+                return 0
+            return run_update(only_if_available=args.if_available, quiet=args.quiet)
+        except UpdateError as exc:
+            print(f"gamebuddy: update failed: {exc}", file=sys.stderr)
+            return 1
+        except Exception as exc:  # noqa: BLE001 — network errors
+            print(f"gamebuddy: could not reach GitHub: {exc}", file=sys.stderr)
+            return 1
     if cmd == "hyprland-config":
         print(hyprland_config(args.syntax))
         return 0

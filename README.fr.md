@@ -124,6 +124,19 @@ téléchargé. Laisser `stt_model` vide pour utiliser la config de voxtype.
 Configuration 100 % locale : `provider = "ollama"`, `model = "llama3.2-vision"`,
 `stt = "faster_whisper"` (`pip install 'gamebuddy[local]'`), `tts = "piper"`.
 
+## Mises à jour
+
+```bash
+gamebuddy update            # récupère la dernière release et réinstalle (redémarre le widget)
+gamebuddy update --check    # juste vérifier
+```
+
+L'installeur active un timer utilisateur quotidien (`gamebuddy-update.timer`). Avec
+`auto_update = "notify"` (défaut), le widget affiche une bulle et une entrée dans le menu de la
+barre quand une nouvelle version existe ; `auto_update = "auto"` dans `[general]` (ou Réglages →
+Updates) laisse le timer l'installer tout seul, `"off"` ne vérifie jamais. Les releases sont de
+simples tags git publiés par GitHub Actions : pas de binaire, toujours le code source lisible.
+
 ## Hyprland
 
 `gamebuddy hyprland-config` imprime règles et raccourcis adaptés à ta version de Hyprland

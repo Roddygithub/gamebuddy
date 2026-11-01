@@ -1,0 +1,6 @@
+[Unit]
+Description=GameBuddy — daily update check (installs new releases when general.auto_update = "auto")
+
+[Service]
+Type=oneshot
+ExecStart=@BIN@ update --if-available --quiet --respect-policy

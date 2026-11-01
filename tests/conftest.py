@@ -1,4 +1,6 @@
 import os
+
+os.environ["GAMEBUDDY_NO_UPDATE_CHECK"] = "1"
 import pathlib
 import tempfile
 

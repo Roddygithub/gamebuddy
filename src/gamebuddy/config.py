@@ -27,6 +27,7 @@ class GeneralConfig:
     assistant_name: str = ASSISTANT_DEFAULT_NAME
     personality: str = "coach"  # coach | friendly | concise
     onboarding_done: bool = False
+    auto_update: str = "notify"  # off | notify | auto (daily systemd timer installs releases)
 
 
 @dataclass

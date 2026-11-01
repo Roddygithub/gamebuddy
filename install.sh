@@ -16,9 +16,10 @@ warn() { printf '\033[1;33m[gamebuddy]\033[0m %s\n' "$*" >&2; }
 
 uninstall() {
   say "removing venv, launcher, desktop entry and service"
-  systemctl --user disable --now gamebuddy.service 2>/dev/null || true
-  rm -rf "$VENV" "$BIN/gamebuddy" \
+  systemctl --user disable --now gamebuddy.service gamebuddy-update.timer 2>/dev/null || true
+  rm -rf "$VENV" "$BIN/gamebuddy" "$PREFIX/source_dir" \
     "$HOME/.config/systemd/user/gamebuddy.service" \
+    "$HOME/.config/systemd/user/gamebuddy-update.service" "$HOME/.config/systemd/user/gamebuddy-update.timer" \
     "${XDG_DATA_HOME:-$HOME/.local/share}/applications/gamebuddy.desktop"
   if [ -f "$HYPR_SNIPPET" ]; then
     rm -f "$HYPR_SNIPPET"
@@ -75,7 +76,11 @@ APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 mkdir -p "$APPS" "$HOME/.config/systemd/user"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy.desktop" > "$APPS/gamebuddy.desktop"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy.service" > "$HOME/.config/systemd/user/gamebuddy.service"
+sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy-update.service" > "$HOME/.config/systemd/user/gamebuddy-update.service"
+cp "$SRC_DIR/packaging/gamebuddy-update.timer" "$HOME/.config/systemd/user/gamebuddy-update.timer"
+printf '%s\n' "$SRC_DIR" > "$PREFIX/source_dir"   # `gamebuddy update` pulls new tags here
 systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable --now gamebuddy-update.timer 2>/dev/null || true
 
 # ---- Hyprland rules + binds ------------------------------------------------
 if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || [ -d "$HYPR_DIR" ]; then
@@ -99,3 +104,4 @@ echo "  codex login                  (ChatGPT Plus/Pro, no API key) — or expor
 echo "  gamebuddy doctor"
 echo "  gamebuddy                      # first run opens the onboarding wizard"
 echo "  systemctl --user enable --now gamebuddy   # optional autostart"
+echo "  gamebuddy update                          # later: pull the latest release (daily check is on)"
