@@ -30,8 +30,26 @@ local model through Ollama).
 - **Spoken replies** — OpenAI TTS, [piper](https://github.com/rhasspy/piper) or espeak-ng; speech-to-text through OpenAI, faster-whisper (offline) or whisper.cpp.
 - **Coach mode (opt-in, experimental)** — periodic observation with a cautious grounding gate; silent unless a long-lived decision window is clearly visible. See [docs/COACH-MODE.md](docs/COACH-MODE.md).
 - **Multilingual** — UI in French, English, German, Spanish, Italian, Brazilian and European Portuguese; Bro answers in whatever language you speak.
-- **Providers** — Anthropic Claude, OpenAI, Ollama, or any OpenAI-compatible endpoint (LM Studio, OpenRouter, Mistral…).
+- **Providers** — a ChatGPT Plus/Pro subscription (via the Codex CLI, no API key), Anthropic Claude, OpenAI, Ollama, or any OpenAI-compatible endpoint (LM Studio, OpenRouter, Mistral…).
 - **Scriptable** — a Unix-socket IPC and a CLI (`gamebro ptt start`, `gamebro ask "…"`, `gamebro toggle`), which is how Hyprland keybinds and the Omarchy bar widget drive it.
+
+## Using a ChatGPT Plus / Pro subscription (no API key)
+
+GameBro can run on a ChatGPT subscription through the official **OpenAI Codex CLI**, which
+signs in with your ChatGPT account and bills usage against the subscription's limits:
+
+```bash
+npm install -g @openai/codex     # or your distro's package
+codex login                      # "Sign in with ChatGPT" in the browser, once
+```
+
+Then choose the `codex` provider in the onboarding wizard or set `provider = "codex"` in
+`config.toml`. Each question becomes one `codex exec` run (prompt + screenshot, read-only
+sandbox, no session files); pinning, memory and web search still work through an
+"actions" envelope that GameBro executes. Trade-offs: a few seconds of extra latency per
+answer, no token streaming, and no speech API — voice falls back to local engines
+(faster-whisper for transcription, piper or espeak-ng for speech), which `./install.sh`
+installs by default. `gamebro doctor` tells you whether Codex is installed and signed in.
 
 ## Quick start (Arch Linux / Omarchy)
 
@@ -49,7 +67,7 @@ and installs a desktop entry plus a `systemd --user` service (not enabled by def
 Then:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-…     # or OPENAI_API_KEY, or use Ollama
+codex login                           # ChatGPT Plus/Pro — or export ANTHROPIC_API_KEY / OPENAI_API_KEY
 gamebro                               # first run opens the onboarding wizard
 ```
 
@@ -103,14 +121,14 @@ push_to_talk = "ALT, V"    # Hyprland bind syntax
 toggle_widget = "ALT, B"
 
 [llm]
-provider = "anthropic"     # anthropic | openai | ollama | openai_compatible
-model = "claude-opus-5-5"
-effort = "low"             # Anthropic: low keeps answers fast and cheap mid-game
+provider = "codex"         # codex (ChatGPT Plus) | anthropic | openai | ollama | openai_compatible
+model = ""                 # codex default; e.g. "claude-opus-5-5" for anthropic
+effort = "low"             # anthropic / codex: low keeps answers fast and cheap mid-game
 api_key = ""               # or ANTHROPIC_API_KEY / OPENAI_API_KEY in the environment
 
 [speech]
-stt = "openai"             # openai | faster_whisper | whispercpp | none
-tts = "openai"             # openai | piper | espeak | none
+stt = "faster_whisper"     # openai | faster_whisper | whispercpp | none
+tts = "espeak"             # openai | piper | espeak | none
 speak_replies = true
 
 [coach]

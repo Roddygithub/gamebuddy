@@ -26,8 +26,27 @@ local via Ollama).
 - **Réponses parlées** — TTS OpenAI, piper ou espeak-ng ; transcription OpenAI, faster-whisper (hors ligne) ou whisper.cpp.
 - **Mode coach (optionnel, expérimental)** — observation périodique avec une porte de validation prudente : silence tant qu'une fenêtre de décision lente n'est pas clairement visible. Voir [docs/COACH-MODE.md](docs/COACH-MODE.md).
 - **Multilingue** — interface en français, anglais, allemand, espagnol, italien, portugais (BR/PT) ; Bro répond dans la langue que tu parles.
-- **Fournisseurs** — Anthropic Claude, OpenAI, Ollama, ou tout endpoint compatible OpenAI.
+- **Fournisseurs** — un abonnement ChatGPT Plus/Pro (via le Codex CLI, sans clé API), Anthropic Claude, OpenAI, Ollama, ou tout endpoint compatible OpenAI.
 - **Scriptable** — IPC par socket Unix et CLI (`gamebro ptt start`, `gamebro ask "…"`, `gamebro toggle`) : c'est ainsi que les raccourcis Hyprland et le widget de barre Omarchy le pilotent.
+
+## Avec un abonnement ChatGPT Plus / Pro (sans clé API)
+
+GameBro fonctionne avec un abonnement ChatGPT via le **Codex CLI officiel d'OpenAI**, qui se
+connecte avec ton compte ChatGPT et décompte l'usage sur les limites de l'abonnement :
+
+```bash
+npm install -g @openai/codex     # ou le paquet de ta distribution
+codex login                      # « Se connecter avec ChatGPT » dans le navigateur, une seule fois
+```
+
+Choisis ensuite le fournisseur `codex` dans l'assistant de démarrage, ou mets
+`provider = "codex"` dans `config.toml`. Chaque question devient une exécution `codex exec`
+(prompt + capture, bac à sable lecture seule, aucune session écrite) ; épinglage, mémoire et
+recherche web passent par une enveloppe « actions » que GameBro exécute. Contreparties :
+quelques secondes de latence en plus, pas de streaming, et pas d'API vocale — la voix bascule
+sur des moteurs locaux (faster-whisper pour la transcription, piper ou espeak-ng pour la
+synthèse), installés par défaut par `./install.sh`. `gamebro doctor` indique si Codex est
+installé et connecté.
 
 ## Démarrage rapide (Arch Linux / Omarchy)
 
@@ -45,7 +64,7 @@ une entrée de bureau plus un service `systemd --user` (non activé par défaut)
 Ensuite :
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-…     # ou OPENAI_API_KEY, ou Ollama
+codex login                           # ChatGPT Plus/Pro — ou export ANTHROPIC_API_KEY / OPENAI_API_KEY
 gamebro                               # le premier lancement ouvre l'assistant de configuration
 ```
 
@@ -84,13 +103,13 @@ push_to_talk = "ALT, V"    # syntaxe des binds Hyprland
 toggle_widget = "ALT, B"
 
 [llm]
-provider = "anthropic"     # anthropic | openai | ollama | openai_compatible
-model = "claude-opus-5-5"
-effort = "low"             # Anthropic : réponses rapides et peu coûteuses en jeu
+provider = "codex"         # codex (ChatGPT Plus) | anthropic | openai | ollama | openai_compatible
+model = ""                 # défaut Codex ; ex. "claude-opus-5-5" pour anthropic
+effort = "low"             # anthropic / codex : réponses rapides et peu coûteuses en jeu
 
 [speech]
-stt = "openai"             # openai | faster_whisper | whispercpp | none
-tts = "openai"             # openai | piper | espeak | none
+stt = "faster_whisper"     # openai | faster_whisper | whispercpp | none
+tts = "espeak"             # openai | piper | espeak | none
 
 [coach]
 enabled = false

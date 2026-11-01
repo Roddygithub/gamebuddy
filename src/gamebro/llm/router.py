@@ -15,6 +15,11 @@ def make_provider(cfg: Config, model: str | None = None) -> LLMProvider:
     provider = llm.provider
     model = model or llm.model
     key = cfg.resolve_api_key()
+    if provider == "codex":
+        from gamebro.llm.codex_provider import CodexProvider
+
+        chosen = "" if model.startswith("claude") else model  # ignore a leftover Anthropic default
+        return CodexProvider(model=chosen, effort=llm.effort, binary=llm.codex_binary)
     if provider == "anthropic":
         if not key:
             raise ProviderError("missing_api_key")

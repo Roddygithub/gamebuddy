@@ -28,6 +28,20 @@ from gamebro.ui.widget import BroWidget
 
 log = logging.getLogger(__name__)
 
+_FRIENDLY = {
+    "codex_not_installed": "Codex CLI not found — install it with `npm install -g @openai/codex` and run `codex login`.",
+    "codex_not_logged_in": "Codex is not signed in — run `codex login` in a terminal (ChatGPT Plus/Pro account).",
+    "codex_timeout": "Codex took too long to answer — try again or lower the reasoning effort in Settings.",
+    "missing_api_key": "No API key configured — open Settings, or choose the `codex` provider (ChatGPT Plus).",
+}
+
+
+def friendly_error(message: str) -> str:
+    for key, text in _FRIENDLY.items():
+        if key in message:
+            return text
+    return message
+
 
 class GameBroApp(QObject):
     def __init__(self, cfg: Config | None = None):
@@ -250,7 +264,7 @@ class GameBroApp(QObject):
             key = "error_no_key" if "missing_api_key" in str(exc) else "error_generic"
             self.bridge.error.emit(self.tr(key, error=str(exc)))
         except Exception as exc:  # noqa: BLE001
-            self.bridge.error.emit(self.tr("error_generic", error=str(exc)))
+            self.bridge.error.emit(self.tr("error_generic", error=friendly_error(str(exc))))
 
     def _on_reply_done(self, text: str) -> None:
         self.widget.end_stream(text)
@@ -280,7 +294,7 @@ class GameBroApp(QObject):
 
     def _on_error(self, message: str) -> None:
         self.widget.end_stream("")
-        self.widget.add_error(message)
+        self.widget.add_error(friendly_error(message))
         self.widget.set_status("ready")
 
     # ---- voice: push-to-talk -------------------------------------------------
@@ -341,6 +355,8 @@ class GameBroApp(QObject):
         except ProviderError as exc:
             key = "error_no_key" if "missing_api_key" in str(exc) else "error_generic"
             self.bridge.error.emit(self.tr(key, error=str(exc)))
+        except Exception as exc:  # noqa: BLE001
+            self.bridge.error.emit(self.tr("error_generic", error=friendly_error(str(exc))))
 
     # ---- voice: hands-free ---------------------------------------------------
     def toggle_hands_free(self) -> None:

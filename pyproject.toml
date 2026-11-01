@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gamebro"
-version = "0.1.0"
+version = "0.1.1"
 description = "Voice-first AI gaming companion for Linux (Wayland/Hyprland/Omarchy). Talk to Bro while you play."
 readme = "README.md"
 license = { text = "MIT" }

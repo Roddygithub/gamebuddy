@@ -40,13 +40,16 @@ class HotkeyConfig:
 
 @dataclass
 class LLMConfig:
-    provider: str = "anthropic"  # anthropic | openai | ollama | openai_compatible
+    provider: str = (
+        "anthropic"  # anthropic | openai | ollama | openai_compatible | codex (ChatGPT Plus, no key)
+    )
     model: str = "claude-opus-5-5"
     base_url: str = ""  # for ollama / openai_compatible (e.g. http://localhost:11434/v1)
     api_key: str = ""  # prefer api_key_env; stored 0600 if set here
     api_key_env: str = ""  # defaults to ANTHROPIC_API_KEY / OPENAI_API_KEY by provider
     max_tokens: int = 2048
-    effort: str = "low"  # anthropic only: low | medium | high
+    effort: str = "low"  # anthropic / codex: low | medium | high
+    codex_binary: str = "codex"  # Codex CLI executable (provider = codex)
     temperature: float = 0.6  # openai-compatible only
     vision: bool = True
     web_search: bool = True
@@ -143,6 +146,7 @@ DEFAULT_KEY_ENV = {
     "openai": "OPENAI_API_KEY",
     "ollama": "",
     "openai_compatible": "OPENAI_API_KEY",
+    "codex": "",
 }
 
 CHEAP_COACH_MODEL = {
@@ -150,6 +154,7 @@ CHEAP_COACH_MODEL = {
     "openai": "gpt-4o-mini",
     "ollama": "",  # same model
     "openai_compatible": "",
+    "codex": "",  # Codex picks its default model
 }
 
 

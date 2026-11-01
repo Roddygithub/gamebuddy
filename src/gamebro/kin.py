@@ -66,7 +66,7 @@ class Kin:
             try:
                 return self._ask(text.strip(), screenshot, media_type)
             except Exception as exc:  # noqa: BLE001
-                log.exception("ask failed")
+                log.warning("ask failed: %s", exc)
                 self.cb.on_error(str(exc))
                 return ""
             finally:

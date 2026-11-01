@@ -103,20 +103,38 @@ def doctor() -> int:
     except Exception as exc:  # noqa: BLE001
         rows.append(("microphone", False, f"sounddevice/portaudio: {exc}"))
     key = cfg.resolve_api_key()
-    rows.append(
-        (
-            f"llm key ({cfg.llm.provider})",
-            bool(key) or cfg.llm.provider == "ollama",
-            "set" if key else "missing",
+    if cfg.llm.provider == "codex":
+        from gamebro.llm.codex_provider import codex_logged_in
+
+        has_codex = shutil.which(cfg.llm.codex_binary) is not None
+        rows.append(("codex cli", has_codex, "found" if has_codex else "npm install -g @openai/codex"))
+        logged = codex_logged_in()
+        rows.append(("codex login", logged, "ChatGPT account linked" if logged else "run `codex login`"))
+    else:
+        rows.append(
+            (
+                f"llm key ({cfg.llm.provider})",
+                bool(key) or cfg.llm.provider == "ollama",
+                "set" if key else "missing",
+            )
         )
-    )
-    rows.append(
-        (
-            "openai key (voice)",
-            bool(cfg.openai_key()),
-            "set" if cfg.openai_key() else "missing (use piper/espeak + faster_whisper)",
+    if cfg.speech.stt == "openai" or cfg.speech.tts == "openai":
+        rows.append(
+            (
+                "openai key (voice)",
+                bool(cfg.openai_key()),
+                "set" if cfg.openai_key() else "missing (use piper/espeak + faster_whisper)",
+            )
         )
-    )
+    else:
+        try:
+            import faster_whisper  # noqa: F401
+
+            rows.append(("faster-whisper", True, "offline speech-to-text ready"))
+        except ImportError:
+            rows.append(
+                ("faster-whisper", cfg.speech.stt != "faster_whisper", "pip install 'gamebro[local]'")
+            )
     rows.append(("config", config_file().is_file(), str(config_file())))
     rows.append(("database", db_file().is_file(), str(db_file())))
     rows.append(("widget running", is_running(), str(socket_path())))

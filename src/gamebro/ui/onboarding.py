@@ -24,6 +24,7 @@ from gamebro.i18n import Translator, language_display_name
 from gamebro.ui.settings import PROVIDERS
 
 DEFAULT_MODELS = {
+    "codex": "",
     "anthropic": "claude-opus-5-5",
     "openai": "gpt-4o",
     "ollama": "llama3.2-vision",
@@ -77,6 +78,7 @@ class OnboardingWizard(QWizard):
         self.base_url = QLineEdit(self.cfg.llm.base_url)
         self.api_key = QLineEdit(self.cfg.llm.api_key)
         self.api_key.setEchoMode(QLineEdit.Password)
+        self.api_key.setPlaceholderText("not needed for codex (ChatGPT Plus) or ollama")
         self.openai_key = QLineEdit()
         self.openai_key.setEchoMode(QLineEdit.Password)
         self.openai_key.setPlaceholderText("optional — for OpenAI voice (STT/TTS)")
@@ -86,6 +88,13 @@ class OnboardingWizard(QWizard):
         layout.addRow("Base URL", self.base_url)
         layout.addRow(self.tr("onboarding_key"), self.api_key)
         layout.addRow("OPENAI_API_KEY", self.openai_key)
+        self.codex_note = QLabel(
+            "codex: uses your ChatGPT Plus/Pro subscription through the OpenAI Codex CLI. Install it with "
+            "`npm install -g @openai/codex`, run `codex login` once, then pick this provider. Voice then runs "
+            "offline (faster-whisper + piper/espeak-ng) because ChatGPT Plus has no speech API."
+        )
+        self.codex_note.setWordWrap(True)
+        layout.addRow(self.codex_note)
         note = QLabel(
             "Keys are stored in ~/.config/gamebro/config.toml (chmod 600). Environment variables also work."
         )

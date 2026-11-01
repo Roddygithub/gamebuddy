@@ -47,12 +47,12 @@ mkdir -p "$PREFIX" "$BIN"
 if command -v uv >/dev/null; then
   say "creating venv with uv"
   uv venv --quiet "$VENV"
-  uv pip install --quiet --python "$VENV/bin/python" "$SRC_DIR"
+  uv pip install --quiet --python "$VENV/bin/python" "$SRC_DIR[local]"
 else
   say "creating venv with python -m venv"
   python3 -m venv "$VENV"
   "$VENV/bin/pip" install --quiet --upgrade pip
-  "$VENV/bin/pip" install --quiet "$SRC_DIR"
+  "$VENV/bin/pip" install --quiet "$SRC_DIR[local]"
 fi
 ln -sf "$VENV/bin/gamebro" "$BIN/gamebro"
 case ":$PATH:" in *":$BIN:"*) ;; *) warn "add $BIN to your PATH";; esac
@@ -76,8 +76,13 @@ if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || [ -d "$HYPR_DIR" ]; then
   command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 || true
 fi
 
+if ! command -v codex >/dev/null; then
+  warn "Codex CLI not found. To use a ChatGPT Plus/Pro subscription (no API key):"
+  warn "  npm install -g @openai/codex && codex login"
+fi
+
 say "installed. Next:"
-echo "  export ANTHROPIC_API_KEY=…   (or OPENAI_API_KEY, or configure Ollama in the wizard)"
+echo "  codex login                  (ChatGPT Plus/Pro, no API key) — or export ANTHROPIC_API_KEY / OPENAI_API_KEY"
 echo "  gamebro doctor"
 echo "  gamebro                      # first run opens the onboarding wizard"
 echo "  systemctl --user enable --now gamebro   # optional autostart"

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QLabel,
     QLineEdit,
     QSpinBox,
     QTabWidget,
@@ -19,7 +20,7 @@ from PySide6.QtWidgets import (
 from gamebro.config import SUPPORTED_LANGUAGES, Config, save_config
 from gamebro.i18n import Translator, language_display_name
 
-PROVIDERS = ["anthropic", "openai", "ollama", "openai_compatible"]
+PROVIDERS = ["codex", "anthropic", "openai", "ollama", "openai_compatible"]
 STT = ["openai", "faster_whisper", "whispercpp", "none"]
 TTS = ["openai", "piper", "espeak", "none"]
 
@@ -85,6 +86,11 @@ class SettingsDialog(QDialog):
         self.screenshot = QCheckBox()
         self.screenshot.setChecked(cfg.capture.attach_screenshot)
         f.addRow(tr("onboarding_provider"), self.provider)
+        note = QLabel(
+            "codex = your ChatGPT Plus/Pro subscription through the Codex CLI (run `codex login` once, no API key)"
+        )
+        note.setWordWrap(True)
+        f.addRow(note)
         f.addRow("Model", self.model)
         f.addRow("Base URL", self.base_url)
         f.addRow(tr("onboarding_key"), self.api_key)

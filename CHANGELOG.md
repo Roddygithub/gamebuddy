@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-11-01
+
+- `codex` provider: run on a ChatGPT Plus/Pro subscription through the OpenAI Codex CLI (no API key); actions envelope for pin/memory/search; friendly errors; `gamebro doctor` checks the CLI and login.
+- Installer installs the offline speech extra (faster-whisper) by default.
+
 ## 0.1.0 — 2026-11-01
 
 First public version.
