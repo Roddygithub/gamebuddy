@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat
 from pathlib import Path
 
 from gamebuddy import APP_ID
@@ -68,3 +69,48 @@ def ensure_dirs() -> None:
     for d in (config_dir(), data_dir(), cache_dir()):
         _migrate_legacy(d)
         d.mkdir(parents=True, exist_ok=True)
+
+    # Conversations and long-term notes are private user data. Restrict the
+    # app directory itself as well as the SQLite files, so WAL/SHM files
+    # remain private even if SQLite creates them with a permissive umask.
+    data = data_dir()
+    if not stat.S_ISDIR(data.lstat().st_mode):
+        raise NotADirectoryError(f"GameBuddy data path is not a directory: {data}")
+    data.chmod(0o700)
+
+
+def secure_database_files(database: Path) -> None:
+    """Create/protect a SQLite database and repair existing sidecar modes.
+
+    Refuse symlinks and special files so SQLite cannot follow a database path
+    outside the protected app directory. Existing files are chmodded before
+    opening them, including stale WAL, SHM, and rollback-journal files.
+    """
+
+    def protect(path: Path, *, create: bool = False) -> None:
+        flags = os.O_CLOEXEC | os.O_NOFOLLOW
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            if not create:
+                return
+            # O_EXCL prevents an unexpected path from being substituted at
+            # creation time; O_NOFOLLOW also rejects a symlink on Linux.
+            fd = os.open(path, flags | os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+        else:
+            if not stat.S_ISREG(mode):
+                raise OSError(f"SQLite path is not a regular file: {path}")
+            # chmod can repair a mode-000 file before it is opened.
+            path.chmod(0o600)
+            fd = os.open(path, flags | os.O_RDONLY)
+
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise OSError(f"SQLite path is not a regular file: {path}")
+            os.fchmod(fd, 0o600)
+        finally:
+            os.close(fd)
+
+    protect(database, create=True)
+    for suffix in ("-wal", "-shm", "-journal"):
+        protect(database.with_name(database.name + suffix))
