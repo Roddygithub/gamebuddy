@@ -1,6 +1,6 @@
-from gamebro.llm.anthropic_provider import AnthropicProvider
-from gamebro.llm.base import Message, ToolCall, image_part
-from gamebro.llm.openai_provider import OpenAIProvider
+from gamebuddy.llm.anthropic_provider import AnthropicProvider
+from gamebuddy.llm.base import Message, ToolCall, image_part
+from gamebuddy.llm.openai_provider import OpenAIProvider
 
 
 def _history():
@@ -40,7 +40,7 @@ def test_openai_conversion():
 
 
 def test_tool_schema_shapes():
-    from gamebro.tools import ToolContext, build_tools
+    from gamebuddy.tools import ToolContext, build_tools
 
     ctx = ToolContext(pin=lambda *a: None, unpin=lambda: None, remember=lambda *a: None, recall=lambda q: [])
     tools = build_tools(ctx)

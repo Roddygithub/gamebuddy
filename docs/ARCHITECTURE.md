@@ -1,9 +1,9 @@
 # Architecture
 
-GameBro is one Python process (PySide6) plus small system tools. No daemon, no server.
+GameBuddy is one Python process (PySide6) plus small system tools. No daemon, no server.
 
 ```
-src/gamebro/
+src/gamebuddy/
 ├── cli.py            command line; talks to the running widget over IPC
 ├── config.py         TOML config (dataclasses, defaults, 0600 when a key is stored)
 ├── i18n.py           7 UI languages, auto-detected from the locale
@@ -25,11 +25,11 @@ src/gamebro/
 - GUI thread: Qt widgets only.
 - `QThreadPool` workers: capture → LLM call → tool execution → TTS. Results come back through
   `ui/bridge.py` signals (queued connections).
-- `gamebro-ipc` thread: accepts socket connections; read-only requests (`ping`, `status`,
+- `gamebuddy-ipc` thread: accepts socket connections; read-only requests (`ping`, `status`,
   `windows`) are answered in place, everything else is emitted as a `command` signal and
   executed on the GUI thread.
 - Audio callbacks run on the PortAudio thread and only append to buffers / emit levels.
-- `gamebro-coach` thread: the observation loop.
+- `gamebuddy-coach` thread: the observation loop.
 
 ## Conversation history
 
@@ -42,7 +42,7 @@ call at the end of the window so a replay never starts with an orphan result.
 ## Capture
 
 The model should see the game, not the widget. On Hyprland the widget's own client rectangle
-is read from `hyprctl -j clients` (class `gamebro`) and blacked out before encoding; elsewhere
+is read from `hyprctl -j clients` (class `gamebuddy`) and blacked out before encoding; elsewhere
 the Qt frame geometry is used. Capture is a region screenshot (`grim -g`), so an overlapping
 window would show through — the planned fix is a `hyprland-toplevel-export` backend, the same
 mechanism Quickshell's `ScreencopyView` uses in OmaPiP.

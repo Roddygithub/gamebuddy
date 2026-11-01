@@ -2,7 +2,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from gamebro.ipc import IPCServer, is_running, send_command
+from gamebuddy.ipc import IPCServer, is_running, send_command
 
 
 def test_roundtrip_and_stale_socket(tmp_path):

@@ -5,8 +5,8 @@ import stat
 
 import pytest
 
-from gamebro.config import Config
-from gamebro.speech.stt import STTError, parse_voxtype_output, transcribe, voxtype_available
+from gamebuddy.config import Config
+from gamebuddy.speech.stt import STTError, parse_voxtype_output, transcribe, voxtype_available
 
 SAMPLE = """Loading audio file: "/tmp/x.wav"
 Audio format: 16000 Hz, 1 channel(s), Int

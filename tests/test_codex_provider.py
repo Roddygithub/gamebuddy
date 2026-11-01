@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from gamebro.llm.base import Message, image_part
-from gamebro.llm.codex_provider import CodexError, CodexProvider, parse_envelope
-from gamebro.tools import ToolContext, build_tools
+from gamebuddy.llm.base import Message, image_part
+from gamebuddy.llm.codex_provider import CodexError, CodexProvider, parse_envelope
+from gamebuddy.tools import ToolContext, build_tools
 
 FAKE = r"""#!/usr/bin/env bash
 # Records argv + stdin, writes a canned envelope to the -o file.
@@ -82,7 +82,7 @@ def test_envelope_roundtrip_with_image(fake_codex, monkeypatch):
 def test_tool_results_rendered_and_plain_reply(fake_codex, monkeypatch):
     monkeypatch.setenv("FAKE_CODEX_REPLY", json.dumps({"reply": "Pinned.", "actions": []}))
     p = CodexProvider()
-    from gamebro.llm.base import ToolCall
+    from gamebuddy.llm.base import ToolCall
 
     msgs = [
         Message(role="user", content="pin"),
@@ -128,8 +128,8 @@ def test_parse_envelope_tolerant():
 
 
 def test_router_builds_codex_and_ignores_claude_default():
-    from gamebro.config import Config
-    from gamebro.llm.router import make_provider
+    from gamebuddy.config import Config
+    from gamebuddy.llm.router import make_provider
 
     cfg = Config()
     cfg.llm.provider = "codex"

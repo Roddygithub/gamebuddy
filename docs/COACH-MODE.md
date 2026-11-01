@@ -24,7 +24,7 @@ capture (JPEG of the game window)
   → one line in the widget (optionally spoken)
 ```
 
-Every stage writes to the `coach_log` table (`gamebro.db`): `pre_gate:cooldown`,
+Every stage writes to the `coach_log` table (`gamebuddy.db`): `pre_gate:cooldown`,
 `parse:error`, `gate:accepted`, `gate:<reason>`. `Store.coach_stats()` aggregates them, so the
 ratio of reasoner calls to accepted advice can be audited per game.
 
@@ -39,5 +39,5 @@ preparation phases, between-round decisions, post-event micro-debriefs. Not fast
   implemented.
 - The gate validates structure and grounding, not game correctness. Treat advice as a prompt
   for your own judgement.
-- Player-learning / adaptive suppression is limited to the long-term notes Bro keeps
+- Player-learning / adaptive suppression is limited to the long-term notes Buddy keeps
   (`remember`). Tracking mastery per mechanic is future work.

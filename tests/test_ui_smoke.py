@@ -19,8 +19,8 @@ def qapp():
 def test_app_text_roundtrip(qapp, tmp_path, fake_provider, monkeypatch):
     from PySide6.QtCore import QEventLoop, QTimer
 
-    from gamebro.config import Config
-    from gamebro.ui.app import GameBroApp
+    from gamebuddy.config import Config
+    from gamebuddy.ui.app import GameBuddyApp
 
     cfg = Config()
     cfg.general.onboarding_done = True
@@ -28,7 +28,7 @@ def test_app_text_roundtrip(qapp, tmp_path, fake_provider, monkeypatch):
     cfg.speech.tts = "none"
     cfg.llm.web_search = False
     cfg.capture.backend = "none"
-    gb = GameBroApp(cfg)
+    gb = GameBuddyApp(cfg)
     provider = fake_provider(
         [
             {

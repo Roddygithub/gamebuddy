@@ -14,12 +14,12 @@ def isolated_home(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
     pathlib.Path(tmp_path / "run").mkdir()
     short = pathlib.Path(tempfile.mkdtemp(prefix="gb", dir="/tmp"))
-    monkeypatch.setenv("GAMEBRO_SOCKET", str(short / "gb.sock"))
+    monkeypatch.setenv("GAMEBUDDY_SOCKET", str(short / "gb.sock"))
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     for var in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
         monkeypatch.delenv(var, raising=False)
     yield
-    os.environ.pop("GAMEBRO_SOCKET", None)
+    os.environ.pop("GAMEBUDDY_SOCKET", None)
 
 
 class FakeProvider:
@@ -29,7 +29,7 @@ class FakeProvider:
     model = "fake-1"
 
     def __init__(self, script):
-        from gamebro.llm.base import ChatTurn, ToolCall
+        from gamebuddy.llm.base import ChatTurn, ToolCall
 
         self.turns = []
         for item in script:

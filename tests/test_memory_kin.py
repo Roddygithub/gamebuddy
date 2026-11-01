@@ -1,7 +1,7 @@
-from gamebro.config import Config
-from gamebro.kin import Kin, KinCallbacks
-from gamebro.llm.base import Message, ToolCall
-from gamebro.memory import Store
+from gamebuddy.config import Config
+from gamebuddy.kin import Kin, KinCallbacks
+from gamebuddy.llm.base import Message, ToolCall
+from gamebuddy.memory import Store
 
 
 def test_store_roundtrip(tmp_path):

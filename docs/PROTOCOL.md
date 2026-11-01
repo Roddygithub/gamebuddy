@@ -1,11 +1,11 @@
 # IPC protocol
 
-Socket: `$XDG_RUNTIME_DIR/gamebro.sock` (override with `GAMEBRO_SOCKET`). Newline-delimited JSON.
+Socket: `$XDG_RUNTIME_DIR/gamebuddy.sock` (override with `GAMEBUDDY_SOCKET`). Newline-delimited JSON.
 One request per line; one response per line.
 
 | Request | Response |
 |---|---|
-| `{"cmd":"ping"}` | `{"ok":true,"app":"gamebro"}` |
+| `{"cmd":"ping"}` | `{"ok":true,"app":"gamebuddy"}` |
 | `{"cmd":"status"}` | `{"ok":true,"visible":…,"window":…,"recording":…,"hands_free":…,"coach":…,"busy":…,"backend":…,"language":…}` |
 | `{"cmd":"windows"}` | `{"ok":true,"windows":[{"id":…,"title":…,"app_id":…,"rect":{x,y,w,h}}]}` |
 | `{"cmd":"ptt","action":"start|stop|toggle"}` | `{"ok":true,"queued":"ptt"}` |
@@ -22,5 +22,5 @@ Events: `{"event":"status","key":"listening"}`, `{"event":"window","title":…,"
 Example from a shell:
 
 ```bash
-printf '{"cmd":"ask","text":"which of these three items?"}\n' | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/gamebro.sock"
+printf '{"cmd":"ask","text":"which of these three items?"}\n' | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/gamebuddy.sock"
 ```

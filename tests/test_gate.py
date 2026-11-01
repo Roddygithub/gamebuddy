@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from gamebro.coach.gate import parse_observation, similar, validate
+from gamebuddy.coach.gate import parse_observation, similar, validate
 
 GOOD = {
     "game": "Dota Underlords",

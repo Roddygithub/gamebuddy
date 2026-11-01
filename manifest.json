@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.roddygithub.gamebro",
-  "name": "GameBro",
-  "version": "0.1.1",
+  "id": "io.github.roddygithub.gamebuddy",
+  "name": "GameBuddy",
+  "version": "0.2.0",
   "author": "Roddy Salardon",
   "license": "MIT",
-  "description": "Voice-first AI gaming companion. Bar icon shows/hides the Bro widget.",
+  "description": "Voice-first AI gaming companion. Bar icon shows/hides the Buddy widget.",
   "kinds": ["bar-widget"],
   "entryPoints": { "barWidget": "BarWidget.qml" },
   "barWidget": {
-    "displayName": "GameBro",
-    "description": "Show or hide the GameBro companion widget",
+    "displayName": "GameBuddy",
+    "description": "Show or hide the GameBuddy companion widget",
     "category": "Gaming",
     "allowMultiple": false,
     "defaultSection": "right"

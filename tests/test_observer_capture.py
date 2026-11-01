@@ -2,9 +2,9 @@ import io
 
 from PIL import Image, ImageDraw
 
-from gamebro.capture import Rect, WindowInfo, to_jpeg
-from gamebro.capture.base import overlay_mask
-from gamebro.coach.observer import dhash, hash_distance
+from gamebuddy.capture import Rect, WindowInfo, to_jpeg
+from gamebuddy.capture.base import overlay_mask
+from gamebuddy.coach.observer import dhash, hash_distance
 
 
 def _png(color, w=200, h=120, box=None):

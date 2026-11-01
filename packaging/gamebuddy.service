@@ -1,0 +1,14 @@
+[Unit]
+Description=GameBuddy — voice-first AI gaming companion
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=@BIN@
+Restart=on-failure
+RestartSec=3
+Environment=QT_QPA_PLATFORM=wayland;xcb
+
+[Install]
+WantedBy=graphical-session.target

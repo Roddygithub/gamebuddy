@@ -1,5 +1,5 @@
-from gamebro.cli import hyprland_config, main
-from gamebro.tools.web import html_to_text
+from gamebuddy.cli import hyprland_config, main
+from gamebuddy.tools.web import html_to_text
 
 
 def test_html_to_text():
@@ -10,11 +10,11 @@ def test_html_to_text():
 
 def test_hyprland_config_variants():
     legacy = hyprland_config("legacy")
-    assert "windowrulev2 = pin, class:^(gamebro)$" in legacy
-    assert "bind = ALT, V, exec, gamebro ptt start" in legacy
-    assert "bindr = ALT, V, exec, gamebro ptt stop" in legacy
+    assert "windowrulev2 = pin, class:^(gamebuddy)$" in legacy
+    assert "bind = ALT, V, exec, gamebuddy ptt start" in legacy
+    assert "bindr = ALT, V, exec, gamebuddy ptt stop" in legacy
     new = hyprland_config("v053")
-    assert "match:class ^(gamebro)$, pin on" in new
+    assert "match:class ^(gamebuddy)$, pin on" in new
     lua = hyprland_config("lua")
     assert "hl.window_rule" in lua
 

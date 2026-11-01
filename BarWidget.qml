@@ -3,11 +3,11 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui as Ui
 
-// Omarchy bar widget: one icon that drives the GameBro widget over its CLI.
+// Omarchy bar widget: one icon that drives the GameBuddy widget over its CLI.
 // The Python app owns the UI; this only toggles / pushes-to-talk.
 Ui.BarWidget {
   id: root
-  moduleName: "io.github.roddygithub.gamebro"
+  moduleName: "io.github.roddygithub.gamebuddy"
 
   property bool running: false
   property bool listening: false
@@ -16,7 +16,7 @@ Ui.BarWidget {
   implicitHeight: button.implicitHeight
 
   function run(args) {
-    proc.command = ["gamebro"].concat(args)
+    proc.command = ["gamebuddy"].concat(args)
     proc.running = true
   }
   function toggle() { run(["toggle"]) }
@@ -31,7 +31,7 @@ Ui.BarWidget {
   // Poll the socket-backed status so the icon reflects the real state.
   Process {
     id: statusProc
-    command: ["gamebro", "status"]
+    command: ["gamebuddy", "status"]
     running: false
     stdout: StdioCollector {
       onStreamFinished: {
@@ -55,7 +55,7 @@ Ui.BarWidget {
   }
 
   IpcHandler {
-    target: "io.github.roddygithub.gamebro"
+    target: "io.github.roddygithub.gamebuddy"
     function toggle(): void { root.toggle() }
     function pttStart(): void { root.ptt("start") }
     function pttStop(): void { root.ptt("stop") }
@@ -67,8 +67,8 @@ Ui.BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: root.listening ? "󰍬" : (root.running ? "󰍫" : "󰍭")
-    tooltipText: root.running ? "GameBro — click to show/hide, right-click to pick the game window"
-                              : "GameBro — click to start"
+    tooltipText: root.running ? "GameBuddy — click to show/hide, right-click to pick the game window"
+                              : "GameBuddy — click to start"
     onPressed: function(mouse) {
       if (mouse === Qt.RightButton) root.pickWindow()
       else if (root.running) root.toggle()

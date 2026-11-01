@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
-- New STT engine `voxtype`: reuses Omarchy's dictation tool (`voxtype transcribe`), its model and GPU build. Picked automatically at onboarding when installed; `gamebro doctor` reports it.
+- **Renamed GameBro → GameBuddy.** Package, CLI (`gamebuddy`), socket, config/data dirs, Hyprland class, systemd unit and Omarchy plugin id all follow. Existing `~/.config/gamebro` and `~/.local/share/gamebro` are moved automatically on first start; re-run `./install.sh` (it replaces the old `gamebro` symlink, desktop entry, service and Hyprland snippet).
+- New STT engine `voxtype`: reuses Omarchy's dictation tool (`voxtype transcribe`), its model and GPU build. Picked automatically at onboarding when installed; `gamebuddy doctor` reports it.
 
 ## 0.1.1 — 2026-11-01
 
-- `codex` provider: run on a ChatGPT Plus/Pro subscription through the OpenAI Codex CLI (no API key); actions envelope for pin/memory/search; friendly errors; `gamebro doctor` checks the CLI and login.
+- `codex` provider: run on a ChatGPT Plus/Pro subscription through the OpenAI Codex CLI (no API key); actions envelope for pin/memory/search; friendly errors; `gamebuddy doctor` checks the CLI and login.
 - Installer installs the offline speech extra (faster-whisper) by default.
 
 ## 0.1.0 — 2026-11-01

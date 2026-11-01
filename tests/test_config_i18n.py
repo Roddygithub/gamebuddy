@@ -1,5 +1,5 @@
-from gamebro.config import Config, load_config, save_config
-from gamebro.i18n import Translator, detect_language
+from gamebuddy.config import Config, load_config, save_config
+from gamebuddy.i18n import Translator, detect_language
 
 
 def test_roundtrip(tmp_path):
@@ -52,7 +52,7 @@ def test_detect_language(monkeypatch):
 
 
 def test_all_languages_have_all_keys():
-    from gamebro.i18n import _STRINGS
+    from gamebuddy.i18n import _STRINGS
 
     base = set(_STRINGS["en"])
     for lang, table in _STRINGS.items():

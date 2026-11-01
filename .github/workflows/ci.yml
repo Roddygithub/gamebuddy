@@ -47,7 +47,7 @@ jobs:
           from pathlib import Path
           m = json.load(open("manifest.json"))
           assert m["schemaVersion"] == 1
-          assert m["id"] == "io.github.roddygithub.gamebro"
+          assert m["id"] == "io.github.roddygithub.gamebuddy"
           assert m["entryPoints"]["barWidget"] == "BarWidget.qml"
           for path in ("BarWidget.qml", "README.md", "install.sh", "LICENSE"):
               assert Path(path).is_file(), path

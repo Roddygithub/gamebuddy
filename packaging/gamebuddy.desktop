@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=GameBuddy
+GenericName=AI gaming companion
+Comment=Voice-first AI companion that sits next to your game
+Exec=@BIN@
+Icon=audio-input-microphone
+Terminal=false
+Categories=Game;Utility;
+StartupWMClass=gamebuddy
+Keywords=game;assistant;voice;overlay;
