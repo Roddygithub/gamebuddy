@@ -15,7 +15,6 @@ import os
 import shutil
 import subprocess
 import tempfile
-import tomllib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -145,31 +144,27 @@ class CodexProvider(LLMProvider):
                 "read-only",
                 "--color",
                 "never",
+                # Keep user-installed MCPs/plugins/apps and tool overrides out
+                # of Buddy's model session; authentication still uses CODEX_HOME.
+                "--ignore-user-config",
                 "-c",
                 f'model_reasoning_effort="{self.effort}"',
                 "-o",
                 str(out_file),
             ]
-            # Buddy runs its own tools. User MCP servers may start desktop apps
-            # (e.g. Prev --mcp) even before the model receives the question.
-            cmd += ["-c", "features.shell_tool=false"]
-            home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-            try:
-                config = tomllib.loads((home / "config.toml").read_text())
-            except FileNotFoundError:
-                config = {}
-            for name in config.get("mcp_servers", {}):
-                if "." in name:
-                    raise CodexError(
-                        "codex_mcp_name_unsupported: connector names containing dots cannot be isolated"
-                    )
-                cmd += ["-c", f"mcp_servers.{name}.enabled=false"]
-            for name in config.get("plugins", {}):
-                if "." in name:
-                    raise CodexError(
-                        "codex_plugin_name_unsupported: plugin names containing dots cannot be isolated"
-                    )
-                cmd += ["-c", f"plugins.{name}.enabled=false"]
+            # Buddy runs its own tools. Keep Codex chat-only: its shell, local
+            # image reader and web search are unnecessary. The explicitly
+            # attached -i screenshot remains the only image sent to the model.
+            cmd += [
+                "-c",
+                "features.shell_tool=false",
+                "-c",
+                "tools.view_image=false",
+                "-c",
+                "tools.web_search=false",
+                "-c",
+                "apps._default.enabled=false",
+            ]
             if self.model:
                 cmd += ["-m", self.model]
             if tools:

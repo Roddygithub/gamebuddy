@@ -9,6 +9,7 @@
 - Reuse existing virtualenvs during updates and constrain PyAV for local transcription compatibility.
 - Store conversation history in a private data directory and protect existing SQLite database/sidecar files.
 - Restrict fetched web pages and redirect targets to public IP addresses; pass local eSpeak text through stdin.
+- Isolate Codex chats from user configuration and built-in tools; attach only the selected game capture.
 
 ## 0.3.1
 
