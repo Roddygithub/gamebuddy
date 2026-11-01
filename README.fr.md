@@ -222,7 +222,7 @@ dans l'original.
 
 ## Vie privée
 
-- Les captures ne sont prises que quand tu poses une question (ou en mode coach) et ne partent que vers le fournisseur que tu as choisi. Seuls le texte de la conversation et tes notes sont écrits sur disque (`~/.local/share/gamebuddy/gamebuddy.db`).
+- Les captures ne sont prises que quand tu poses une question (ou en mode coach) et ne partent que vers le fournisseur que tu as choisi. Seuls le texte de la conversation et tes notes sont écrits sur disque (`~/.local/share/gamebuddy/gamebuddy.db`). Le dossier de données est réservé à ton compte (mode `700`), ainsi que la base et les fichiers SQLite associés (mode `600`).
 - Les clés API restent dans `config.toml` (mode 600) ou dans ton environnement.
 - Pas de télémétrie, pas de compte, pas de serveur à nous.
 

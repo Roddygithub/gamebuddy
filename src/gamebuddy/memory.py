@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from gamebuddy.llm.base import Message
-from gamebuddy.paths import db_file, ensure_dirs
+from gamebuddy.paths import db_file, ensure_dirs, secure_database_files
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -53,12 +53,16 @@ class Store:
             ensure_dirs()
             path = db_file()
         self.path = path
+        secure_database_files(path)
         self._lock = threading.RLock()
         self._conn = sqlite3.connect(str(path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+        # Repair sidecars created by SQLite too. For the normal XDG database,
+        # the parent directory is already 0700 before SQLite is opened.
+        secure_database_files(path)
         self.conversation_id = self._current_conversation()
 
     # ---- conversations ---------------------------------------------------

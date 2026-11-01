@@ -7,6 +7,7 @@
 - Add marketplace preview, dependency/setup/removal documentation and a submission draft.
 - Back up compositor files changed by installation and remove owned includes during uninstall.
 - Reuse existing virtualenvs during updates and constrain PyAV for local transcription compatibility.
+- Store conversation history in a private data directory and protect existing SQLite database/sidecar files.
 
 ## 0.3.1
 

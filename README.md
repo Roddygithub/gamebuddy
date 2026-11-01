@@ -282,7 +282,7 @@ GNOME, KDE and X11 users bind the same commands with their desktop's shortcut se
 
 ## Privacy
 
-- Screenshots are taken only when you ask (or when coach mode is on) and are sent only to the provider you configured. Nothing is written to disk except the conversation text and your notes in `~/.local/share/gamebuddy/gamebuddy.db`.
+- Screenshots are taken only when you ask (or when coach mode is on) and are sent only to the provider you configured. Nothing is written to disk except the conversation text and your notes in `~/.local/share/gamebuddy/gamebuddy.db`. The data directory is restricted to your account (mode `700`); the database and SQLite sidecars are mode `600`.
 - API keys stay in `config.toml` (mode 600) or in your environment.
 - No telemetry, no account, no server of ours.
 
