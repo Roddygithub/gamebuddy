@@ -715,6 +715,8 @@ class GameBuddyApp(QObject):
             self.pick_window()
         elif cmd == "unpin":
             self.unpin()
+        elif cmd == "ai-settings":
+            self.open_ai_settings()
         elif cmd == "settings":
             self.open_settings()
         elif cmd == "quit":
