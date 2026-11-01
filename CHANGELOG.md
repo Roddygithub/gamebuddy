@@ -8,6 +8,7 @@
 - Back up compositor files changed by installation and remove owned includes during uninstall.
 - Reuse existing virtualenvs during updates and constrain PyAV for local transcription compatibility.
 - Store conversation history in a private data directory and protect existing SQLite database/sidecar files.
+- Restrict fetched web pages and redirect targets to public IP addresses; pass local eSpeak text through stdin.
 
 ## 0.3.1
 
