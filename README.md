@@ -241,3 +241,13 @@ compositor behaviour need a desktop session.
 ## License
 
 MIT — see [LICENSE](LICENSE). Independent community project, not affiliated with any game publisher or AI vendor.
+
+### Adaptive Buddy size
+
+`[ui] compact_orb = "auto"` (the default) uses a 64 × 64 head when the usable
+screen is at most 1280 logical pixels wide or 800 high, accounting for desktop
+HiDPI scaling. Larger screens use the 260 × 96 orb with a caption. The panel
+fits within the usable screen, and the layout updates when its screen or
+resolution changes. Set `compact_orb = true` or `false` to override the choice.
+The bundled monochrome symbolic tray icon follows the bar foreground on hosts
+that support symbolic recoloring, including Omarchy.

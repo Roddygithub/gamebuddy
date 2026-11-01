@@ -191,3 +191,16 @@ dans l'original.
 ## Licence
 
 MIT — voir [LICENSE](LICENSE). Projet communautaire indépendant, sans affiliation avec un éditeur de jeux ou un fournisseur d'IA.
+
+### Taille adaptative de Buddy
+
+Par défaut, `compact_orb = "auto"` dans `[ui]` affiche une petite tête de 64 × 64
+sur les écrans dont la surface utile ne dépasse pas 1280 pixels de large ou
+800 pixels de haut. Ces dimensions sont en pixels logiques : la mise à l’échelle
+HiDPI du bureau est donc prise en compte. Sur les écrans plus grands, l’orbe
+avec texte mesure 260 × 96. Le panneau reste limité à la surface utile et la
+présentation se réadapte lors d’un changement d’écran ou de résolution.
+
+`compact_orb = true` force la petite tête ; `false` garde l’orbe avec texte.
+L’icône de Buddy dans le systray est fournie comme icône symbolique monochrome :
+les bureaux compatibles, dont Omarchy, l’adaptent à la couleur de leur barre.

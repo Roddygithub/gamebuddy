@@ -30,6 +30,7 @@ package() {
   cd gamebuddy
   python -m installer --destdir="$pkgdir" dist/*.whl
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 src/gamebuddy/assets/gamebuddy-symbolic.svg "$pkgdir/usr/share/icons/hicolor/scalable/status/gamebuddy-symbolic.svg"
   sed 's|@BIN@|/usr/bin/gamebuddy|' packaging/gamebuddy.desktop > gamebuddy.desktop
   install -Dm644 gamebuddy.desktop "$pkgdir/usr/share/applications/gamebuddy.desktop"
   sed 's|@BIN@|/usr/bin/gamebuddy|' packaging/gamebuddy.service > gamebuddy.service

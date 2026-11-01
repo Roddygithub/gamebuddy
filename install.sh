@@ -12,6 +12,7 @@ HYPR_DIR="$HOME/.config/hypr"
 HYPR_SNIPPET="$HYPR_DIR/gamebuddy.conf"
 SWAY_DIR="$HOME/.config/sway"
 SWAY_SNIPPET="$SWAY_DIR/gamebuddy.conf"
+TRAY_ICON="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/status/gamebuddy-symbolic.svg"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 say()  { printf '\033[1;35m[gamebuddy]\033[0m %s\n' "$*"; }
@@ -20,7 +21,7 @@ warn() { printf '\033[1;33m[gamebuddy]\033[0m %s\n' "$*" >&2; }
 uninstall() {
   say "removing venv, launcher, desktop entry and service"
   systemctl --user disable --now gamebuddy.service gamebuddy-update.timer 2>/dev/null || true
-  rm -rf "$VENV" "$BIN/gamebuddy" "$PREFIX/source_dir" \
+  rm -rf "$VENV" "$BIN/gamebuddy" "$PREFIX/source_dir" "$TRAY_ICON" \
     "$HOME/.config/systemd/user/gamebuddy.service" \
     "$HOME/.config/systemd/user/gamebuddy-update.service" "$HOME/.config/systemd/user/gamebuddy-update.timer" \
     "${XDG_DATA_HOME:-$HOME/.local/share}/applications/gamebuddy.desktop"
@@ -96,6 +97,7 @@ case ":$PATH:" in *":$BIN:"*) ;; *) warn "add $BIN to your PATH";; esac
 # ---- desktop entry + systemd user service ----------------------------------
 APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 mkdir -p "$APPS" "$HOME/.config/systemd/user"
+install -Dm644 "$SRC_DIR/src/gamebuddy/assets/gamebuddy-symbolic.svg" "$TRAY_ICON"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy.desktop" > "$APPS/gamebuddy.desktop"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy.service" > "$HOME/.config/systemd/user/gamebuddy.service"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy-update.service" > "$HOME/.config/systemd/user/gamebuddy-update.service"

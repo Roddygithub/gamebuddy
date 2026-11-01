@@ -76,6 +76,12 @@ def hyprland_config(syntax: str = "auto") -> str:
         syntax = "legacy" if v is None or v < (0, 53) else ("v053" if v < (0, 55) else "lua")
     rules = {"legacy": HYPR_RULES_LEGACY, "v053": HYPR_RULES_053, "lua": HYPR_RULES_LUA}[syntax]
     text = rules.format(w=w, h=h, wplus=w + 20)
+    if cfg.ui.compact_orb == "auto":
+        # Let Qt choose the size for the screen where the widget actually opens.
+        if syntax == "lua":
+            text = text.replace(f'size = "{w} {h}", ', "")
+        else:
+            text = "\n".join(line for line in text.splitlines() if "size " not in line) + "\n"
     binds = HYPR_BINDS.format(ptt=cfg.hotkeys.push_to_talk, toggle=cfg.hotkeys.toggle_widget)
     if syntax == "lua":
         binds = "-- binds (translate to hl.bind if your binds live in Lua):\n" + "".join(
@@ -101,9 +107,12 @@ def sway_config() -> str:
         from gamebuddy.ui.widget import ORB_H, ORB_W
 
         w, h = ORB_W, ORB_H
-    return SWAY_RULES.format(
+    text = SWAY_RULES.format(
         w=w, h=h, ptt=sway_key(cfg.hotkeys.push_to_talk), toggle=sway_key(cfg.hotkeys.toggle_widget)
     )
+    if cfg.ui.compact_orb == "auto":
+        text = text.replace(f", resize set {w} {h}", "")
+    return text
 
 
 def doctor() -> int:

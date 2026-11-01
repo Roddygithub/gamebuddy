@@ -34,7 +34,7 @@ def test_avatar_paints_every_state(qapp, tmp_path):
 
 
 def test_orb_mode_switch_and_captions(qapp):
-    w = BuddyWidget(Translator("fr"), "Buddy", "ALT, V", 420, 640, mode="orb")
+    w = BuddyWidget(Translator("fr"), "Buddy", "ALT, V", 420, 640, mode="orb", compact_orb=False)
     w.show()
     assert w.mode == "orb" and w.width() == ORB_W and w.height() == ORB_H
     assert not w.root.isVisible() and w.orb_root.isVisible()
@@ -49,7 +49,7 @@ def test_orb_mode_switch_and_captions(qapp):
     # pinned content opens the panel
     w.show_pin("Checklist", "- item")
     assert w.mode == "panel" and w.root.isVisible() and not w.orb_root.isVisible()
-    assert w.width() == 420 and w.height() == 640
+    assert w.width() <= 420 and w.height() <= 640
     w.set_mode("orb")
     assert w.mode == "orb"
     long = "x" * 500
@@ -61,4 +61,37 @@ def test_orb_mode_switch_and_captions(qapp):
 def test_panel_default_when_configured(qapp):
     w = BuddyWidget(Translator("en"), "Buddy", "ALT, V", 400, 500, mode="panel")
     assert w.mode == "panel" and w.orb_root.isHidden()
+    w.close()
+
+
+@pytest.mark.parametrize(
+    "width,height,compact", [(1200, 675, True), (1920, 1080, False), (1600, 750, True), (2560, 1440, False)]
+)
+def test_auto_orb_uses_logical_screen_dimensions(width, height, compact):
+    from gamebuddy.ui.widget import compact_for_screen
+
+    assert compact_for_screen(width, height) is compact
+    assert compact_for_screen(width, height, True) is True
+    assert compact_for_screen(width, height, False) is False
+
+
+def test_widget_adapts_when_screen_changes(qapp, monkeypatch):
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import QRect
+
+    area = QRect(0, 24, 1200, 600)
+    w = BuddyWidget(Translator("fr"), "Buddy", "ALT, V", 420, 640)
+    monkeypatch.setattr(w, "screen", lambda: SimpleNamespace(availableGeometry=lambda: area))
+    w.set_mode("orb")
+    assert (w.width(), w.height()) == (64, 64)
+    assert w.caption.isHidden()
+    w.set_mode("panel")
+    assert w.width() == 420 and w.height() == 568
+    area = QRect(1200, 0, 1920, 1080)
+    w.set_mode("orb")
+    assert (w.width(), w.height()) == (ORB_W, ORB_H)
+    assert not w.caption.isHidden()
+    w.set_mode("panel")
+    assert (w.width(), w.height()) == (420, 640)
     w.close()
