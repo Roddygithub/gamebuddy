@@ -37,6 +37,7 @@ def fake_codex(tmp_path, monkeypatch):
     exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
     monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ['PATH']}")
     log = tmp_path / "log"
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
     monkeypatch.setenv("FAKE_CODEX_LOG", str(log))
     monkeypatch.delenv("FAKE_CODEX_FAIL", raising=False)
     return log
@@ -137,3 +138,28 @@ def test_router_builds_codex_and_ignores_claude_default():
     assert p.name == "codex" and p.model == ""  # claude-opus-5-5 default ignored
     cfg.llm.model = "gpt-5"
     assert make_provider(cfg).model == "gpt-5"
+
+
+def test_codex_disables_desktop_connectors_for_buddy(fake_codex, monkeypatch, tmp_path):
+    home = tmp_path / "codex-home"
+    home.mkdir()
+    config = '[mcp_servers.prev]\ncommand="/usr/bin/prev"\nargs=["--mcp"]\n[plugins."desktop@local"]\nenabled=true\n'
+    (home / "config.toml").write_text(config)
+    monkeypatch.setenv("CODEX_HOME", str(home))
+    monkeypatch.setenv("FAKE_CODEX_REPLY", "Ready")
+    CodexProvider().chat("S", [Message(role="user", content="hello")])
+    args = Path(f"{fake_codex}.args").read_text().splitlines()
+    assert "mcp_servers.prev.enabled=false" in args
+    assert "plugins.desktop@local.enabled=false" in args
+    assert "features.shell_tool=false" in args
+    assert (home / "config.toml").read_text() == config
+
+
+def test_codex_fails_before_launch_if_connector_cannot_be_disabled(fake_codex, monkeypatch, tmp_path):
+    home = tmp_path / "codex-home"
+    home.mkdir()
+    (home / "config.toml").write_text('[mcp_servers."desktop.prev"]\ncommand="prev"\n')
+    monkeypatch.setenv("CODEX_HOME", str(home))
+    with pytest.raises(CodexError, match="codex_mcp_name_unsupported"):
+        CodexProvider().chat("S", [Message(role="user", content="hello")])
+    assert not Path(f"{fake_codex}.args").exists()

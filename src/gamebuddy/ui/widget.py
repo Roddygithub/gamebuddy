@@ -291,6 +291,7 @@ class BuddyWidget(QWidget):
         compact = compact_for_screen(area.width(), area.height(), self._compact_orb_setting)
         self._orb_size = (64, 64) if compact else (ORB_W, ORB_H)
         self.orb_root.setFixedSize(*self._orb_size)
+        self.orb_root.setStyleSheet("background: transparent; border: none;" if compact else "")
         self.orb_root.layout().setContentsMargins(*((4, 4, 4, 4) if compact else (10, 8, 12, 8)))
         self.orb_avatar.set_size(56 if compact else 64)
         self.caption.setVisible(not compact)

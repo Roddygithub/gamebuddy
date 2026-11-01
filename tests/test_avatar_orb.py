@@ -95,3 +95,16 @@ def test_widget_adapts_when_screen_changes(qapp, monkeypatch):
     w.set_mode("panel")
     assert (w.width(), w.height()) == (420, 640)
     w.close()
+
+
+def test_compact_avatar_background_is_transparent(qapp):
+    from gamebuddy.ui.theme import DEFAULT, stylesheet
+
+    w = BuddyWidget(Translator("fr"), "Buddy", "ALT, V", 420, 640, mode="orb", compact_orb=True)
+    w.setStyleSheet(stylesheet(DEFAULT))
+    w.show()
+    qapp.processEvents()
+    img = w.grab().toImage()
+    assert img.pixelColor(0, 0).alpha() == 0
+    assert img.pixelColor(img.width() // 2, img.height() // 2).alpha() > 0
+    w.close()

@@ -51,6 +51,7 @@ def stylesheet(c: dict[str, str], font_size: int = 13, opacity: float = 0.94) ->
     bg = c["bg"].lstrip("#")
     r, g, b = int(bg[0:2], 16), int(bg[2:4], 16), int(bg[4:6], 16)
     return f"""
+    QWidget#gamebuddy-window, QWidget#buddy-avatar {{ background: transparent; border: none; }}
     QWidget#root {{
         background: rgba({r},{g},{b},{alpha});
         border-radius: 14px;
