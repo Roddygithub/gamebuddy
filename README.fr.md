@@ -5,10 +5,10 @@ Reste dans ton jeu, parle à Buddy. Un compagnon IA vocal pour Wayland, Hyprland
 
 <p align="center"><a href="README.md">🇬🇧 English version</a></p>
 
-<p align="center"><img src="docs/assets/orb-fr.png" alt="Widget GameBuddy" width="420"></p>
+<p align="center"><img src="preview.png" alt="GameBuddy : voix, choix de l’IA et checklist épinglée (aperçu en anglais)" width="960"></p>
 
 GameBuddy, c'est **Buddy** : un assistant IA qui vit dans un petit widget à côté de ton jeu.
-Tu maintiens une touche et tu parles ; Buddy voit la fenêtre de jeu que tu as choisie,
+Tu maintiens une touche pour parler, ou tu choisis un appui pour démarrer et un second pour arrêter ; Buddy voit la fenêtre de jeu que tu as choisie,
 cherche sur le web, répond dans ta langue, garde tes builds et checklists épinglés à
 l'écran, et se souvient des détails utiles d'une session à l'autre. Il **conseille
 seulement** : il n'injecte jamais d'entrées, ne lit pas la mémoire du jeu et ne joue pas à ta place.
@@ -18,13 +18,17 @@ local via Ollama).
 
 ## Ce qu'on voit en jeu
 
-Par défaut, Buddy n'est qu'un **orbe** : son visage animé et ses derniers mots, rien d'autre. Il
+Buddy s’adapte à ton écran : une **petite tête animée** sur laptop, ou un **orbe avec du texte** quand la place le permet. Il
 cligne des yeux au repos, pulse quand il écoute, fait tourner des points quand il réfléchit et bouge
 la bouche quand il parle. Les clics hors de l'orbe vont au jeu. Un clic sur le visage (ou une
 checklist qu'il épingle) ouvre le panneau complet : contenu épinglé, conversation, saisie texte.
 `mode = "panel"` dans `[ui]` démarre directement avec le panneau.
 
 <p align="center"><img src="docs/assets/widget-fr.png" width="360" alt="Panneau GameBuddy avec une checklist épinglée"></p>
+
+<p align="center"><img src="docs/assets/compact-orb.png" width="64" alt="Petite tête de Buddy"> &nbsp; <img src="docs/assets/orb-fr.png" width="260" alt="Orbe de Buddy avec texte"></p>
+
+Ces captures montrent l’interface actuelle avec du texte de démonstration. La petite tête et l’orbe sont présentés à leur taille logique.
 
 ## Plugin Omarchy Quattro
 
@@ -64,6 +68,49 @@ Supprimer uniquement le plugin retire son widget de barre ; l’application et s
 services restent installés. Les paquets système ne sont pas supprimés automatiquement.
 Détails : [validation et publication du plugin](docs/OMARCHY-PLUGIN.md).
 
+## Utilisation au quotidien
+
+### Taille adaptative de Buddy
+
+Par défaut, `compact_orb = "auto"` dans `[ui]` affiche une petite tête de 64 × 64
+sur les écrans dont la surface utile ne dépasse pas 1280 pixels de large ou
+800 pixels de haut. Ces dimensions sont en pixels logiques : la mise à l’échelle
+HiDPI du bureau est donc prise en compte. Sur les écrans plus grands, l’orbe
+avec texte mesure 260 × 96. Le panneau reste limité à la surface utile et la
+présentation se réadapte lors d’un changement d’écran ou de résolution.
+
+`compact_orb = true` force la petite tête ; `false` garde l’orbe avec texte.
+L’icône de Buddy dans le systray est fournie comme icône symbolique monochrome :
+les bureaux compatibles, dont Omarchy, l’adaptent à la couleur de leur barre.
+
+### Choisir l’IA depuis le systray
+
+Clic droit sur la tête de Buddy → **IA / raisonnement** : le choix actif est
+indiqué en haut. Avec Codex, le sous-menu **Modèle** reprend le catalogue local
+du CLI (s’il est disponible), et **Raisonnement** propose les niveaux déclarés
+pour le modèle sélectionné. Les changements sont sauvegardés pour les prochains
+échanges ; le menu est désactivé pendant une réponse. **Autre IA / modèle…** ouvre
+l’onglet IA des réglages, avec fournisseur, modèle personnalisé et accès API.
+Le raisonnement est proposé pour Codex et Anthropic ; les autres adaptateurs
+n’envoient pas ce paramètre.
+
+### Micro, raccourcis et délai de réponse
+
+Dans **Réglages → General**, clique dans le champ du raccourci puis presse la
+combinaison souhaitée. **Maintenir pour parler** enregistre jusqu’au relâchement ;
+**Appuyer pour démarrer / arrêter** commence au premier appui et envoie au second.
+Le raccourci d’affichage est configurable aussi. Les fragments Hyprland générés
+et gérés par GameBuddy sont actualisés automatiquement, avec détection des
+conflits et retour en arrière si la configuration est invalide. Sur les autres
+bureaux, actualise aussi les raccourcis globaux du bureau. `gamebuddy hyprland-config`
+et `sway-config` tiennent compte du mode choisi.
+
+Le délai cumule transcription, capture, appels IA/recherche et synthèse vocale.
+Les modèles Whisper déjà téléchargés sont préchargés en arrière-plan, sans
+écouter le micro ni accéder au réseau. Dans l’onglet Voice, `tiny` réduit le coût
+CPU au prix d’une précision potentiellement moindre ; `base` reste un compromis.
+`gamebuddy status` expose les dernières durées de transcription et de réponse IA.
+
 ## Fonctionnalités
 
 - **Voix d'abord** — maintiens `Alt+V` (configurable) pour parler, ou active l'écoute mains libres. Le clavier marche aussi.
@@ -94,7 +141,7 @@ recherche web passent par une enveloppe « actions » que GameBuddy exécute. Co
 quelques secondes de latence en plus, pas de streaming, et pas d'API vocale — la voix bascule
 sur des moteurs locaux (voxtype si l'outil de dictée d'Omarchy est installé, sinon faster-whisper, pour la
 transcription ; piper ou espeak-ng pour la
-synthèse), installés par défaut par `./install.sh`. `gamebuddy doctor` indique si Codex est
+synthèse). `./install.sh` installe faster-whisper et espeak-ng ; voxtype et Piper sont optionnels. `gamebuddy doctor` indique si Codex est
 installé et connecté.
 
 ## Démarrage rapide (Arch Linux / Omarchy)
@@ -147,13 +194,17 @@ language = "auto"          # fr, en, de, es, it, pt-BR, pt-PT
 assistant_name = "Buddy"
 personality = "coach"      # coach | friendly | concise
 
+[ui]
+compact_orb = "auto"      # auto | true | false
+
 [hotkeys]
+mode = "hold"             # hold | toggle
 push_to_talk = "ALT, V"    # syntaxe des binds Hyprland
 toggle_widget = "ALT, B"
 
 [llm]
 provider = "codex"         # codex (ChatGPT Plus) | anthropic | openai | ollama | openai_compatible
-model = ""                 # défaut Codex ; ex. "claude-opus-5-5" pour anthropic
+model = ""                 # défaut du fournisseur ; choix dans le systray ou les réglages IA
 effort = "low"             # anthropic / codex : réponses rapides et peu coûteuses en jeu
 
 [speech]
@@ -162,7 +213,7 @@ tts = "espeak"             # openai | piper | espeak | none
 
 [coach]
 enabled = false
-model = ""                 # modèle économique par défaut (claude-haiku-5-5 / gpt-4o-mini)
+model = ""                 # vide : modèle par défaut du fournisseur
 ```
 
 `voxtype` réutilise la pile de dictée d'Omarchy (*Install > AI > Dictation*, ou `yay -S voxtype`) :
@@ -203,8 +254,7 @@ simples tags git publiés par GitHub Actions : pas de binaire, toujours le code 
 `gamebuddy hyprland-config` imprime règles et raccourcis adaptés à ta version de Hyprland
 (`windowrulev2` historique, syntaxe `match:` ≥ 0.53, Lua ≥ 0.55). Le widget est une
 fenêtre flottante épinglée : visible sur tous les espaces de travail et au-dessus des jeux
-en fenêtré / plein écran sans bordure. Le plein écran exclusif n'est pas garanti, comme
-dans l'original.
+en fenêtré / plein écran sans bordure. La prise en charge du plein écran exclusif dépend du compositeur et du jeu.
 
 ## CLI
 
@@ -228,47 +278,12 @@ dans l'original.
 - Les clés API restent dans `config.toml` (mode 600) ou dans ton environnement.
 - Pas de télémétrie, pas de compte, pas de serveur à nous.
 
+## État du projet
+
+Version actuelle : **0.3.1**. La validation de structure et de compatibilité Quattro du marketplace Omarchy est passée. Un mainteneur a approuvé la révision `b73930d` après revue des capacités. Le moteur nécessite une installation manuelle : [suivre la demande et la publication](https://github.com/omacom/omarchy-plugin-marketplace/issues/13577).
+
+La capture par région peut montrer une fenêtre qui recouvre le jeu. Le mode coach reste expérimental. Le son et les compositeurs réels nécessitent une session de bureau pour être vérifiés.
+
 ## Licence
 
 MIT — voir [LICENSE](LICENSE). Projet communautaire indépendant, sans affiliation avec un éditeur de jeux ou un fournisseur d'IA.
-
-### Taille adaptative de Buddy
-
-Par défaut, `compact_orb = "auto"` dans `[ui]` affiche une petite tête de 64 × 64
-sur les écrans dont la surface utile ne dépasse pas 1280 pixels de large ou
-800 pixels de haut. Ces dimensions sont en pixels logiques : la mise à l’échelle
-HiDPI du bureau est donc prise en compte. Sur les écrans plus grands, l’orbe
-avec texte mesure 260 × 96. Le panneau reste limité à la surface utile et la
-présentation se réadapte lors d’un changement d’écran ou de résolution.
-
-`compact_orb = true` force la petite tête ; `false` garde l’orbe avec texte.
-L’icône de Buddy dans le systray est fournie comme icône symbolique monochrome :
-les bureaux compatibles, dont Omarchy, l’adaptent à la couleur de leur barre.
-
-### Choisir l’IA depuis le systray
-
-Clic droit sur la tête de Buddy → **IA / raisonnement** : le choix actif est
-indiqué en haut. Avec Codex, le sous-menu **Modèle** reprend le catalogue local
-du CLI (s’il est disponible), et **Raisonnement** propose les niveaux déclarés
-pour le modèle sélectionné. Les changements sont sauvegardés pour les prochains
-échanges ; le menu est désactivé pendant une réponse. **Autre IA / modèle…** ouvre
-l’onglet IA des réglages, avec fournisseur, modèle personnalisé et accès API.
-Le raisonnement est proposé pour Codex et Anthropic ; les autres adaptateurs
-n’envoient pas ce paramètre.
-
-### Micro, raccourcis et délai de réponse
-
-Dans **Réglages → General**, clique dans le champ du raccourci puis presse la
-combinaison souhaitée. **Maintenir pour parler** enregistre jusqu’au relâchement ;
-**Appuyer pour démarrer / arrêter** commence au premier appui et envoie au second.
-Le raccourci d’affichage est configurable aussi. Les fragments Hyprland générés
-et gérés par GameBuddy sont actualisés automatiquement, avec détection des
-conflits et retour en arrière si la configuration est invalide. Sur les autres
-bureaux, actualise aussi les raccourcis globaux du bureau. `gamebuddy hyprland-config`
-et `sway-config` tiennent compte du mode choisi.
-
-Le délai cumule transcription, capture, appels IA/recherche et synthèse vocale.
-Les modèles Whisper déjà téléchargés sont préchargés en arrière-plan, sans
-écouter le micro ni accéder au réseau. Dans l’onglet Voice, `tiny` réduit le coût
-CPU au prix d’une précision potentiellement moindre ; `base` reste un compromis.
-`gamebuddy status` expose les dernières durées de transcription et de réponse IA.
