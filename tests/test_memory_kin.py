@@ -69,6 +69,46 @@ def test_kin_tool_loop_pins_and_remembers(tmp_path, fake_provider):
     store.close()
 
 
+def test_local_action_with_final_reply_needs_one_model_call(tmp_path, fake_provider):
+    cfg = Config()
+    cfg.llm.web_search = False
+    store = Store(tmp_path / "db.sqlite")
+    provider = fake_provider(
+        [
+            {
+                "text": "C'est épinglé.",
+                "calls": [("c1", "pin_content", {"title": "Plan", "markdown": "- Keep gold"})],
+            }
+        ]
+    )
+    kin = Kin(cfg, store, KinCallbacks(), provider=provider)
+    try:
+        assert kin.ask("Épingle ce plan") == "C'est épinglé."
+        assert len(provider.requests) == 1
+        assert store.load_pin()["title"] == "Plan"
+        assert store.recent_messages()[-1].role == "tool"
+    finally:
+        store.close()
+
+
+def test_failed_local_action_still_gets_a_followup(tmp_path, fake_provider):
+    cfg = Config()
+    cfg.llm.web_search = False
+    store = Store(tmp_path / "db.sqlite")
+    provider = fake_provider(
+        [
+            {"text": "C'est épinglé.", "calls": [("c1", "pin_content", {"markdown": ""})]},
+            {"text": "Le contenu à épingler manque."},
+        ]
+    )
+    kin = Kin(cfg, store, KinCallbacks(), provider=provider)
+    try:
+        assert kin.ask("Épingle") == "Le contenu à épingler manque."
+        assert len(provider.requests) == 2
+    finally:
+        store.close()
+
+
 def test_kin_reports_errors(tmp_path):
     class Boom:
         name = "boom"

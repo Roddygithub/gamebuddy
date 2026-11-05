@@ -104,6 +104,11 @@ class Kin:
         messages = history + [user_msg]
 
         final_text = ""
+        final_actions = {
+            "pin_content": "Pinned '",
+            "unpin_content": "Pinned content removed.",
+            "remember": "Saved to long-term memory.",
+        }
         for _round in range(self.cfg.llm.max_tool_rounds + 1):
             turn: ChatTurn = provider.chat(
                 system=system,
@@ -124,12 +129,18 @@ class Kin:
             final_text = turn.text
             if not turn.tool_calls:
                 break
+            can_finish = bool(turn.text.strip())
             for call in turn.tool_calls:
                 self.cb.on_tool(call.name, call.arguments)
                 result = run_tool(tools, call.name, call.arguments)
+                can_finish = (
+                    can_finish and call.name in final_actions and result.startswith(final_actions[call.name])
+                )
                 tool_msg = Message(role="tool", content=result, tool_call_id=call.id)
                 messages.append(tool_msg)
                 self.store.add_message(tool_msg)
+            if can_finish:
+                break  # Successful local actions need no extra model round trip.
             self.cb.on_status("thinking")
         self.cb.on_reply_done(final_text)
         return final_text

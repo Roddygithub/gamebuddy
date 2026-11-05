@@ -165,7 +165,16 @@ Voice latency includes transcription, capture, AI/search calls and speech
 synthesis. Cached Whisper models are warmed in the background without microphone
 capture or network access. Voice settings offer `tiny` for lower CPU cost with a
 possible accuracy tradeoff, or `base` for balance. `gamebuddy status` reports the
-last transcription and assistant response durations.
+last transcription, assistant response and speech synthesis (`synthesis_s`) durations.
+With the Python Piper package, the local voice is preloaded and reused in memory;
+the command-line binary remains a fallback when the package is unavailable.
+
+Buddy receives a screenshot per question, not a continuous video. The defaults
+`[capture] max_width = 2560` and `jpeg_quality = 90` retain more detail in small
+labels, portraits and numbers; existing configurations retain their saved values.
+Dota Underlords instructions distinguish board, bench and shop and prioritize one
+concrete next move. Hover a unit to expose its name if its portrait remains ambiguous.
+Web search remains available when needed.
 
 ## Features
 
@@ -378,7 +387,7 @@ Current version: **0.3.1**. The Omarchy marketplace submission passed structural
 
 Known limits:
 
-- Per-window capture uses region screenshots; a window hidden behind another will show what is on top. A `hyprland-toplevel-export` backend (what OmaPiP uses) is a planned improvement.
+- Other backends using screen regions can show overlapping windows; Hyprland uses direct toplevel capture instead.
 - Global hotkeys on Wayland go through the compositor (Hyprland binds). An X11 in-process listener is available with `pip install 'gamebuddy[x11]'` and `hotkeys.x11_listener = true`.
 - Coach mode is experimental and conservative by design; expect it to stay silent most of the time.
 

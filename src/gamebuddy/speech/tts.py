@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import io
+import logging
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
+import threading
+import wave
+from functools import lru_cache
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -54,18 +58,46 @@ def _openai(text: str, cfg: Config) -> bytes:
     return resp.content
 
 
+_piper_lock = threading.Lock()
+
+
+@lru_cache(maxsize=1)
+def _piper_voice(model: str):
+    from piper import PiperVoice
+
+    return PiperVoice.load(model)
+
+
+def warm_piper_model(cfg: Config) -> None:
+    """Load the configured local voice without speaking or downloading anything."""
+    if cfg.speech.tts != "piper" or not cfg.speech.piper_model or find_spec("piper") is None:
+        return
+    try:
+        with _piper_lock:
+            _piper_voice(str(Path(cfg.speech.piper_model).expanduser()))
+    except Exception as exc:
+        logging.getLogger(__name__).debug("Piper warmup skipped: %s", exc)
+
+
 def _piper(text: str, cfg: Config) -> bytes:
-    # Prefer the package in GameBuddy's venv, which need not be on the desktop PATH.
-    binary = [sys.executable, "-m", "piper"] if find_spec("piper") is not None else [shutil.which("piper")]
-    if binary[0] is None:
-        raise TTSError("piper not found")
     if not cfg.speech.piper_model:
         raise TTSError("speech.piper_model is not set")
+    model = str(Path(cfg.speech.piper_model).expanduser())
+    if find_spec("piper") is not None:
+        with _piper_lock:
+            voice = _piper_voice(model)
+            audio = io.BytesIO()
+            with wave.open(audio, "wb") as wav:
+                voice.synthesize_wav(text, wav)
+            return audio.getvalue()
+    binary = shutil.which("piper")
+    if not binary:
+        raise TTSError("piper not found")
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fh:
         path = Path(fh.name)
     try:
         proc = subprocess.run(
-            [*binary, "--model", cfg.speech.piper_model, "--output_file", str(path)],
+            [binary, "--model", model, "--output_file", str(path)],
             input=text.encode(),
             capture_output=True,
             timeout=60,

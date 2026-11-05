@@ -39,3 +39,11 @@ def test_overlay_mask_relative_coords():
     assert overlay_mask(win, Rect(2000, 0, 100, 100)) is None
     m = overlay_mask(win, Rect(850, 50, 200, 200))
     assert m == Rect(750, 0, 50, 150)
+
+
+def test_default_capture_keeps_native_ultrawide_hud_resolution():
+    from gamebuddy.config import CaptureConfig
+
+    cfg = CaptureConfig()
+    image = to_jpeg(_png((20, 30, 40), w=2536, h=1030), cfg.max_width, cfg.jpeg_quality)
+    assert Image.open(io.BytesIO(image)).size == (2536, 1030)

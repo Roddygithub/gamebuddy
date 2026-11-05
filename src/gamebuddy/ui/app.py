@@ -164,6 +164,10 @@ class GameBuddyApp(QObject):
         if not self.store.recent_messages(1):
             self.widget.add_bubble(self.tr("welcome", name=self.cfg.general.assistant_name), "bro")
         self._setup_tray()
+        if self.cfg.speech.tts == "piper":
+            from gamebuddy.speech.tts import warm_piper_model
+
+            self.pool.start(lambda: warm_piper_model(self.cfg))
         if self.cfg.speech.stt == "faster_whisper":
             from gamebuddy.speech.stt import warm_local_model
 
@@ -433,7 +437,9 @@ class GameBuddyApp(QObject):
         from gamebuddy.speech.tts import synthesize
 
         try:
+            started = time.monotonic()
             audio, fmt = synthesize(text, self.cfg, self.tr.language)
+            self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
             if not audio:
                 return
             self._speaking.set()

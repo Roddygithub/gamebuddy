@@ -90,8 +90,8 @@ class AudioConfig:
 class CaptureConfig:
     backend: str = "auto"  # auto | hyprland | sway | wlroots | portal (GNOME/KDE) | x11 | macos | none
     attach_screenshot: bool = True
-    max_width: int = 1280
-    jpeg_quality: int = 72
+    max_width: int = 2560
+    jpeg_quality: int = 90
     mask_overlay: bool = True
 
 
