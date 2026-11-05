@@ -1,13 +1,15 @@
-"""Speech to text: OpenAI API, voxtype (Omarchy), faster-whisper (local) or whisper.cpp CLI."""
+"""Speech to text through APIs, local models or installed dictation services."""
 
 from __future__ import annotations
 
 import io
+import json
 import logging
 import shutil
 import subprocess
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 from gamebuddy.config import Config
@@ -34,6 +36,8 @@ def transcribe(wav: bytes, cfg: Config) -> str:
         return _whispercpp(wav, cfg)
     if engine == "voxtype":
         return _voxtype(wav, cfg)
+    if engine == "superwhisper":
+        return _superwhisper(wav)
     raise STTError(f"unknown STT engine: {engine}")
 
 
@@ -139,6 +143,58 @@ def _voxtype(wav: bytes, cfg: Config) -> str:
         raise STTError("voxtype_timeout") from exc
     finally:
         Path(path).unlink(missing_ok=True)
+
+
+def _superwhisper(wav: bytes) -> str:
+    """Use Superwhisper's saved processing/language/vocabulary settings, without pasting."""
+    if not shutil.which("superwhisper"):
+        raise STTError("superwhisper_not_installed")
+    deadline = time.monotonic() + 120
+
+    def call(*args: str) -> dict:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise STTError("superwhisper_timeout")
+        proc = subprocess.run(
+            ["superwhisper", *args], capture_output=True, text=True, timeout=remaining, check=False
+        )
+        if proc.returncode != 0:
+            raise STTError("superwhisper_failed: check `superwhisper status`")
+        result = json.loads(proc.stdout)
+        if result is None and args == ("read",):
+            return {}  # No completed dictation while the service is processing audio.
+        if not isinstance(result, dict):
+            raise ValueError("expected an object")
+        return result
+
+    with tempfile.TemporaryDirectory(prefix="gamebuddy-superwhisper-") as directory:
+        path = Path(directory) / "speech.wav"
+        path.write_bytes(wav)
+        try:
+            # No --insert: never paste a dictation into the currently focused game.
+            started = call("transcribe", str(path))
+            session = started.get("session_id")
+            if started.get("ok") is not True or type(session) is not int:
+                raise STTError("superwhisper_failed: could not start transcription")
+            while True:
+                result = call("read")
+                completed = result.get("session_id")
+                if type(completed) is int and completed > session:
+                    raise STTError("superwhisper_failed: another dictation replaced this session; retry")
+                if type(completed) is int and completed == session:
+                    if result.get("error"):
+                        raise STTError("superwhisper_failed: check `superwhisper status`")
+                    text = result.get("text")
+                    if not isinstance(text, str):
+                        raise ValueError("missing transcription text")
+                    return text.strip()
+                time.sleep(0.2)
+        except subprocess.TimeoutExpired as exc:
+            raise STTError("superwhisper_timeout") from exc
+        except (ValueError, TypeError) as exc:
+            raise STTError("superwhisper_failed: invalid CLI response") from exc
+        except FileNotFoundError as exc:
+            raise STTError("superwhisper_not_installed") from exc
 
 
 def _whispercpp(wav: bytes, cfg: Config) -> str:

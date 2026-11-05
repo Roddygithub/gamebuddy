@@ -70,6 +70,16 @@ Détails : [validation et publication du plugin](docs/OMARCHY-PLUGIN.md).
 
 ## Utilisation au quotidien
 
+### Réutiliser Superwhisper
+
+Si Superwhisper est installé, choisis `superwhisper` dans **Réglages → Voice → Speech to text**
+(ou `stt = "superwhisper"` dans `[speech]`). GameBuddy lui transmet son enregistrement
+et reprend le texte de la session correspondante, sans le coller dans le jeu.
+Le mode de traitement, les modèles, la langue et le vocabulaire suivent les réglages de
+Superwhisper ; le champ **STT model** de GameBuddy est ignoré. Le micro et les raccourcis
+restent ceux de GameBuddy. Les transcriptions suivent aussi la politique d’historique de
+Superwhisper. Le fournisseur IA et la voix de réponse restent configurés dans GameBuddy.
+
 ### Taille adaptative de Buddy
 
 Par défaut, `compact_orb = "auto"` dans `[ui]` affiche une petite tête de 64 × 64

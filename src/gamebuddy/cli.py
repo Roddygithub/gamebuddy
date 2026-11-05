@@ -164,6 +164,14 @@ def doctor() -> int:
         rows.append(("microphone", bool(devs), ", ".join(devs[:3]) or "no input device"))
     except Exception as exc:  # noqa: BLE001
         rows.append(("microphone", False, f"sounddevice/portaudio: {exc}"))
+    if cfg.speech.stt == "superwhisper":
+        rows.append(
+            (
+                "superwhisper",
+                shutil.which("superwhisper") is not None,
+                "STT using saved Superwhisper settings",
+            )
+        )
     key = cfg.resolve_api_key()
     if cfg.llm.provider == "codex":
         from gamebuddy.llm.codex_provider import codex_logged_in

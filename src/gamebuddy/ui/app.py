@@ -33,6 +33,8 @@ from gamebuddy.ui.widget import BuddyWidget
 log = logging.getLogger(__name__)
 
 _FRIENDLY = {
+    "superwhisper_not_installed": "Superwhisper not found — install it or choose another STT engine in Settings.",
+    "superwhisper_timeout": "Superwhisper took too long to transcribe — check `superwhisper status` and retry.",
     "codex_not_installed": "Codex CLI not found — install it with `npm install -g @openai/codex` and run `codex login`.",
     "codex_not_logged_in": "Codex is not signed in — run `codex login` in a terminal (ChatGPT Plus/Pro account).",
     "codex_timeout": "Codex took too long to answer — try again or lower the reasoning effort in Settings.",

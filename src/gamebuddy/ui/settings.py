@@ -24,7 +24,7 @@ from gamebuddy.config import SUPPORTED_LANGUAGES, Config, save_config
 from gamebuddy.i18n import Translator, language_display_name
 
 PROVIDERS = ["codex", "anthropic", "openai", "ollama", "openai_compatible"]
-STT = ["openai", "voxtype", "faster_whisper", "whispercpp", "none"]
+STT = ["openai", "superwhisper", "voxtype", "faster_whisper", "whispercpp", "none"]
 TTS = ["openai", "piper", "espeak", "none"]
 
 
@@ -168,6 +168,8 @@ class SettingsDialog(QDialog):
         f.addRow("Speech to text", self.stt)
         f.addRow("STT model", self.stt_model)
         stt_note = QLabel(
+            "superwhisper: reuses the installed service's processing mode, language and vocabulary; "
+            "STT model is ignored. GameBuddy still records your microphone.\n"
             "voxtype: Omarchy's dictation tool (Install > AI > Dictation) — reuses its Whisper/Parakeet model "
             "and GPU build. STT model is left empty to use voxtype's own config."
         )
