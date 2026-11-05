@@ -105,6 +105,15 @@ for the reviewed checks and listing metadata.
 
 ## Everyday controls
 
+### Reuse Superwhisper
+
+With Superwhisper installed, select `superwhisper` in **Settings → Voice → Speech to text**
+(or set `stt = "superwhisper"` in `[speech]`). GameBuddy submits its recording and reads
+that session's transcript without pasting into the game. Processing mode, models, language
+and vocabulary follow Superwhisper's settings; GameBuddy's **STT model** field is ignored.
+Microphone capture and shortcuts remain in GameBuddy. Transcriptions also follow
+Superwhisper's history policy. The AI provider and reply voice remain configured in GameBuddy.
+
 ### Adaptive Buddy size
 
 `[ui] compact_orb = "auto"` (the default) uses a 64 × 64 head when the usable

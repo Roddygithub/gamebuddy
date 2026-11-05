@@ -61,7 +61,7 @@ class LLMConfig:
 
 @dataclass
 class SpeechConfig:
-    stt: str = "openai"  # openai | voxtype | faster_whisper | whispercpp | none
+    stt: str = "openai"  # openai | superwhisper | voxtype | faster_whisper | whispercpp | none
     stt_model: str = "whisper-1"
     stt_language: str = ""  # "" = auto-detect
     whispercpp_binary: str = "whisper-cli"
