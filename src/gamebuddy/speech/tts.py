@@ -5,7 +5,9 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
+from importlib.util import find_spec
 from pathlib import Path
 
 from gamebuddy.config import Config
@@ -53,7 +55,9 @@ def _openai(text: str, cfg: Config) -> bytes:
 
 
 def _piper(text: str, cfg: Config) -> bytes:
-    if not shutil.which("piper"):
+    # Prefer the package in GameBuddy's venv, which need not be on the desktop PATH.
+    binary = [sys.executable, "-m", "piper"] if find_spec("piper") is not None else [shutil.which("piper")]
+    if binary[0] is None:
         raise TTSError("piper not found")
     if not cfg.speech.piper_model:
         raise TTSError("speech.piper_model is not set")
@@ -61,7 +65,7 @@ def _piper(text: str, cfg: Config) -> bytes:
         path = Path(fh.name)
     try:
         proc = subprocess.run(
-            ["piper", "--model", cfg.speech.piper_model, "--output_file", str(path)],
+            [*binary, "--model", cfg.speech.piper_model, "--output_file", str(path)],
             input=text.encode(),
             capture_output=True,
             timeout=60,

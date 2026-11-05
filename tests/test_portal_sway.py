@@ -62,7 +62,7 @@ def test_sway_key_and_config(capsys):
     assert sway_key("ALT, V") == "Mod1+v"
     assert sway_key("SUPER SHIFT, B") == "Mod4+Shift+b"
     text = sway_config()
-    assert 'for_window [app_id="gamebuddy"] floating enable, sticky enable' in text
+    assert 'for_window [app_id="gamebuddy" title="^GameBuddy$"] floating enable, sticky enable' in text
     assert "bindsym --release Mod1+v exec gamebuddy ptt stop" in text
     assert main(["sway-config"]) == 0
     assert "bindsym Mod1+b exec gamebuddy toggle" in capsys.readouterr().out

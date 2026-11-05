@@ -105,6 +105,11 @@ for the reviewed checks and listing metadata.
 
 ## Everyday controls
 
+Select the game from the tray (**Choose game window**) or the panel's 🎯 button.
+On Hyprland, capture uses the window's `stableId` and `grim -T` to capture only the game,
+even on another workspace. Recent Hyprland and grim versions are required; a failed
+window capture never falls back to a desktop screenshot.
+
 ### Reuse Superwhisper
 
 With Superwhisper installed, select `superwhisper` in **Settings → Voice → Speech to text**
@@ -113,6 +118,20 @@ that session's transcript without pasting into the game. Processing mode, models
 and vocabulary follow Superwhisper's settings; GameBuddy's **STT model** field is ignored.
 Microphone capture and shortcuts remain in GameBuddy. Transcriptions also follow
 Superwhisper's history policy. The AI provider and reply voice remain configured in GameBuddy.
+
+### A more natural offline voice
+
+For a more natural French voice than eSpeak, install Piper in the engine environment
+and download a voice (about 65 MB for Siwis):
+
+```bash
+uv pip install --python ~/.local/share/gamebuddy/venv/bin/python piper-tts
+~/.local/share/gamebuddy/venv/bin/python -m piper.download_voices --data-dir ~/.local/share/gamebuddy/voices fr_FR-siwis-medium
+```
+
+In **Settings → Voice**, select `piper` and set **Piper model path** to the full path
+of `~/.local/share/gamebuddy/voices/fr_FR-siwis-medium.onnx`.
+The voice runs offline; [other voices and their licenses](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md).
 
 ### Adaptive Buddy size
 

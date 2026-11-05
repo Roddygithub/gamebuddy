@@ -1,4 +1,4 @@
-"""Hyprland backend: `hyprctl -j clients` for the window list, `grim -g` for pixels."""
+"""Hyprland backend: list clients and capture only the selected foreign toplevel."""
 
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ class HyprlandBackend(CaptureBackend):
                     rect=Rect(int(at[0]), int(at[1]), int(size[0]), int(size[1])),
                     workspace=str(ws.get("name", ws.get("id", ""))),
                     fullscreen=bool(fs) if isinstance(fs, bool) else int(fs or 0) > 0,
+                    capture_id=str(c.get("stableId") or ""),
                 )
             )
         return out
@@ -44,6 +45,9 @@ class HyprlandBackend(CaptureBackend):
         current = self.find_window(window.id)
         if current is None:
             raise CaptureError("window_lost")
-        r = current.rect
-        geometry = f"{r.x},{r.y} {r.w}x{r.h}"
-        return run(["grim", "-g", geometry, "-t", "png", "-"], binary=True, timeout=6.0)  # type: ignore[return-value]
+        if not current.capture_id:
+            raise CaptureError(
+                "window_capture_unavailable: update Hyprland and grim for direct window capture"
+            )
+        # Never fall back to a screen region: it may show another app/workspace.
+        return run(["grim", "-T", current.capture_id, "-t", "png", "-"], binary=True, timeout=6.0)  # type: ignore[return-value]

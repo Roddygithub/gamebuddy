@@ -239,6 +239,7 @@ class GameBuddyApp(QObject):
         self._refresh_ai_menu()
         for label, slot in (
             (self.tr("show"), self.toggle_visible),
+            (self.tr("pick_window"), self.pick_window),
             (self.tr("hands_free_on"), self.toggle_hands_free),
             (self.tr("coach_on"), self.toggle_coach),
             (self.tr("settings"), self.open_settings),
@@ -364,7 +365,8 @@ class GameBuddyApp(QObject):
         return w is not None
 
     def _overlay_rect(self) -> Rect | None:
-        if not self.cfg.capture.mask_overlay:
+        # Direct Hyprland toplevel captures already exclude our separate window.
+        if not self.cfg.capture.mask_overlay or self.backend.name == "hyprland":
             return None
         try:
             own = self.backend.own_windows(APP_ID)
