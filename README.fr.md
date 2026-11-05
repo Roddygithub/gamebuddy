@@ -70,6 +70,11 @@ Détails : [validation et publication du plugin](docs/OMARCHY-PLUGIN.md).
 
 ## Utilisation au quotidien
 
+Choisis le jeu depuis le systray (**Choisir la fenêtre du jeu**) ou le bouton 🎯 du panneau.
+Sous Hyprland, la capture utilise l’identifiant de fenêtre `stableId` et `grim -T` pour
+ne récupérer que le jeu, même sur un autre espace de travail. Une version récente de
+Hyprland et de grim est nécessaire ; en cas d’échec, aucune capture du bureau ne la remplace.
+
 ### Réutiliser Superwhisper
 
 Si Superwhisper est installé, choisis `superwhisper` dans **Réglages → Voice → Speech to text**
@@ -79,6 +84,20 @@ Le mode de traitement, les modèles, la langue et le vocabulaire suivent les ré
 Superwhisper ; le champ **STT model** de GameBuddy est ignoré. Le micro et les raccourcis
 restent ceux de GameBuddy. Les transcriptions suivent aussi la politique d’historique de
 Superwhisper. Le fournisseur IA et la voix de réponse restent configurés dans GameBuddy.
+
+### Une voix hors ligne plus naturelle
+
+Pour une voix française plus naturelle qu’eSpeak, installe Piper dans l’environnement
+du moteur, puis télécharge une voix (environ 65 Mo pour Siwis) :
+
+```bash
+uv pip install --python ~/.local/share/gamebuddy/venv/bin/python piper-tts
+~/.local/share/gamebuddy/venv/bin/python -m piper.download_voices --data-dir ~/.local/share/gamebuddy/voices fr_FR-siwis-medium
+```
+
+Dans **Réglages → Voice**, choisis `piper` et renseigne **Piper model path** avec
+le chemin complet vers `~/.local/share/gamebuddy/voices/fr_FR-siwis-medium.onnx`.
+Cette voix fonctionne hors ligne ; [autres voix et leurs licences](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md).
 
 ### Taille adaptative de Buddy
 

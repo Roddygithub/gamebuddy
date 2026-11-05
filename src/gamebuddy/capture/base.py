@@ -42,6 +42,7 @@ class WindowInfo:
     rect: Rect
     workspace: str = ""
     fullscreen: bool = False
+    capture_id: str = ""  # foreign toplevel identifier for direct window capture
 
     @property
     def label(self) -> str:

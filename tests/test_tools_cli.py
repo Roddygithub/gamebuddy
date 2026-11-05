@@ -14,9 +14,22 @@ def test_hyprland_config_variants():
     assert "bind = ALT, V, exec, gamebuddy ptt start" in legacy
     assert "bindr = ALT, V, exec, gamebuddy ptt stop" in legacy
     new = hyprland_config("v053")
-    assert "match:class ^(gamebuddy)$, pin on" in new
+    assert "match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, pin on" in new
     lua = hyprland_config("lua")
     assert "hl.window_rule" in lua
+
+
+def test_overlay_rules_do_not_apply_to_dialogs():
+    from gamebuddy.cli import sway_config
+
+    for syntax, match in (
+        ("legacy", "initialTitle:^(GameBuddy)$"),
+        ("v053", "match:initial_title ^(GameBuddy)$"),
+        ("lua", 'initial_title = "^(GameBuddy)$"'),
+    ):
+        rules = [line for line in hyprland_config(syntax).splitlines() if "class" in line]
+        assert rules and all(match in line for line in rules)
+    assert '[app_id="gamebuddy" title="^GameBuddy$"]' in sway_config()
 
 
 def test_cli_without_widget_running(capsys):

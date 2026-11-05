@@ -16,6 +16,29 @@ def qapp():
     yield app
 
 
+def test_tray_exposes_window_picker(qapp, monkeypatch):
+    from PySide6.QtWidgets import QSystemTrayIcon
+
+    from gamebuddy.config import Config
+    from gamebuddy.ui.app import GameBuddyApp
+
+    monkeypatch.setattr(QSystemTrayIcon, "isSystemTrayAvailable", lambda: True)
+    cfg = Config()
+    cfg.capture.backend = "none"
+    gb = GameBuddyApp(cfg)
+    opened = []
+    monkeypatch.setattr(gb, "pick_window", lambda: opened.append(True))
+    try:
+        gb._setup_tray()
+        action = next(a for a in gb.tray.contextMenu().actions() if a.text() == gb.tr("pick_window"))
+        action.trigger()
+        assert opened == [True]
+    finally:
+        gb.tray.hide()
+        gb.widget.close()
+        gb.store.close()
+
+
 def test_app_text_roundtrip(qapp, tmp_path, fake_provider, monkeypatch):
     from PySide6.QtCore import QEventLoop, QTimer
 

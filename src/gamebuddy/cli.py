@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+from importlib.util import find_spec
 from pathlib import Path
 
 from gamebuddy import __version__
@@ -18,29 +19,29 @@ from gamebuddy.ipc import is_running, send_command
 from gamebuddy.paths import config_file, db_file, socket_path
 
 HYPR_RULES_LEGACY = """# GameBuddy — floating, pinned overlay (Hyprland < 0.53)
-windowrulev2 = float, class:^(gamebuddy)$
-windowrulev2 = pin, class:^(gamebuddy)$
-windowrulev2 = size {w} {h}, class:^(gamebuddy)$
-windowrulev2 = move 100%-{wplus} 60, class:^(gamebuddy)$
-windowrulev2 = noborder, class:^(gamebuddy)$
-windowrulev2 = noshadow, class:^(gamebuddy)$
-windowrulev2 = noinitialfocus, class:^(gamebuddy)$
+windowrulev2 = float, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
+windowrulev2 = pin, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
+windowrulev2 = size {w} {h}, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
+windowrulev2 = move 100%-{wplus} 60, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
+windowrulev2 = noborder, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
+windowrulev2 = noshadow, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
+windowrulev2 = noinitialfocus, class:^(gamebuddy)$, initialTitle:^(GameBuddy)$
 """
 HYPR_RULES_053 = """# GameBuddy — floating, pinned overlay (Hyprland 0.53 / 0.54)
-windowrule = match:class ^(gamebuddy)$, float on
-windowrule = match:class ^(gamebuddy)$, pin on
-windowrule = match:class ^(gamebuddy)$, size {w} {h}
-windowrule = match:class ^(gamebuddy)$, move 100%-{wplus} 60
-windowrule = match:class ^(gamebuddy)$, border_size 0
-windowrule = match:class ^(gamebuddy)$, no_shadow on
-windowrule = match:class ^(gamebuddy)$, no_initial_focus on
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, float on
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, pin on
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, size {w} {h}
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, move 100%-{wplus} 60
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, border_size 0
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, no_shadow on
+windowrule = match:class ^(gamebuddy)$, match:initial_title ^(GameBuddy)$, no_initial_focus on
 """
 HYPR_RULES_LUA = """-- GameBuddy — floating, pinned overlay (Hyprland >= 0.55, Lua config)
-hl.window_rule({{ match = {{ class = "^(gamebuddy)$" }}, float = true, pin = true,
+hl.window_rule({{ match = {{ class = "^(gamebuddy)$", initial_title = "^(GameBuddy)$" }}, float = true, pin = true,
   size = "{w} {h}", move = "100%-{wplus} 60", border_size = 0, no_shadow = true, no_initial_focus = true }})
 """
 SWAY_RULES = """# GameBuddy — floating, sticky overlay (sway)
-for_window [app_id="gamebuddy"] floating enable, sticky enable, border none, resize set {w} {h}
+for_window [app_id="gamebuddy" title="^GameBuddy$"] floating enable, sticky enable, border none, resize set {w} {h}
 # GameBuddy — push-to-talk (hold) and widget toggle
 bindsym --no-repeat {ptt} exec gamebuddy ptt start
 bindsym --release {ptt} exec gamebuddy ptt stop
@@ -156,7 +157,10 @@ def doctor() -> int:
         ("espeak-ng", "offline TTS"),
         ("piper", "neural offline TTS"),
     ):
-        rows.append((tool, shutil.which(tool) is not None, why))
+        available = shutil.which(tool) is not None
+        if tool == "piper":
+            available = available or find_spec("piper") is not None
+        rows.append((tool, available, why))
     try:
         import sounddevice as sd
 
