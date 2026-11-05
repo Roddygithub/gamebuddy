@@ -138,7 +138,17 @@ Le délai cumule transcription, capture, appels IA/recherche et synthèse vocale
 Les modèles Whisper déjà téléchargés sont préchargés en arrière-plan, sans
 écouter le micro ni accéder au réseau. Dans l’onglet Voice, `tiny` réduit le coût
 CPU au prix d’une précision potentiellement moindre ; `base` reste un compromis.
-`gamebuddy status` expose les dernières durées de transcription et de réponse IA.
+Avec le paquet Python Piper, la voix locale est préchargée et réutilisée en mémoire,
+sans nouveau processus ni rechargement du modèle à chaque réponse. Le binaire Piper
+reste utilisable en secours. `gamebuddy status` expose les dernières durées de
+transcription, de réponse IA et de synthèse vocale (`synthesis_s`).
+
+Buddy reçoit une capture à chaque question, pas une vidéo continue. Par défaut,
+`[capture] max_width = 2560` et `jpeg_quality = 90` préservent mieux les petits noms,
+portraits et nombres ; les configurations existantes gardent leurs valeurs enregistrées.
+Sur Dota Underlords, les consignes distinguent plateau, banc et boutique et privilégient
+un prochain coup concret. Survoler une unité pour afficher son nom aide si son portrait
+reste ambigu. Les recherches web restent disponibles pour les questions qui en ont besoin.
 
 ## Fonctionnalités
 
@@ -311,7 +321,9 @@ en fenêtré / plein écran sans bordure. La prise en charge du plein écran exc
 
 Version actuelle : **0.3.1**. La validation de structure et de compatibilité Quattro du marketplace Omarchy est passée. Un mainteneur a approuvé la révision `b73930d` après revue des capacités. Le moteur nécessite une installation manuelle : [suivre la demande et la publication](https://github.com/omacom/omarchy-plugin-marketplace/issues/13577).
 
-La capture par région peut montrer une fenêtre qui recouvre le jeu. Le mode coach reste expérimental. Le son et les compositeurs réels nécessitent une session de bureau pour être vérifiés.
+Sur les autres backends utilisant une capture par région, une fenêtre qui recouvre le jeu
+peut apparaître dans l’image ; Hyprland utilise la capture directe de fenêtre.
+Le mode coach reste expérimental. Le son et les compositeurs réels nécessitent une session de bureau pour être vérifiés.
 
 ## Licence
 
