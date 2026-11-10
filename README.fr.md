@@ -319,7 +319,7 @@ en fenêtré / plein écran sans bordure. La prise en charge du plein écran exc
 
 ## État du projet
 
-Version actuelle : **0.3.1**. La validation de structure et de compatibilité Quattro du marketplace Omarchy est passée. Un mainteneur a approuvé la révision `b73930d` après revue des capacités. Le moteur nécessite une installation manuelle : [suivre la demande et la publication](https://github.com/omacom/omarchy-plugin-marketplace/issues/13577).
+Version actuelle : **0.4.0**. La validation de structure et de compatibilité Quattro du marketplace Omarchy est passée. Un mainteneur a approuvé la révision `b73930d` après revue des capacités ; cette version est soumise comme révision publiée suivante. Le moteur nécessite une installation manuelle : [suivre la demande et la publication](https://github.com/omacom/omarchy-plugin-marketplace/issues/13577).
 
 Sur les autres backends utilisant une capture par région, une fenêtre qui recouvre le jeu
 peut apparaître dans l’image ; Hyprland utilise la capture directe de fenêtre.

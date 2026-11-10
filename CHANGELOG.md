@@ -1,7 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-11-10
 
+- **Superwhisper as a speech-to-text engine**: choose `superwhisper` (or `stt = "superwhisper"`)
+  and GameBuddy submits its own recording, then reads that session's transcript without pasting
+  into the game. Processing mode, model, language and vocabulary follow Superwhisper's settings;
+  microphone capture and shortcuts stay in GameBuddy, and the AI provider and reply voice remain
+  configured here.
+- **Reliable game-window capture**: the window picker selects the intended window, and Hyprland
+  captures only that window through `grim -T` with its `stableId`, even on another workspace.
+  A failed window capture no longer falls back to a desktop screenshot.
+- **Sharper game vision by default**: `[capture] max_width = 2560` and `jpeg_quality = 90` keep
+  small labels, portraits and numbers readable; existing configurations keep their saved values.
+  The Dota Underlords instructions distinguish board, bench and shop.
+- **Faster spoken replies**: a Piper voice installed in the engine's virtualenv is detected and
+  used, the Python Piper voice is preloaded and reused in memory instead of reloading the model
+  for each reply, and cached Whisper models are warmed in the background. `gamebuddy status`
+  reports the last transcription, response and synthesis durations.
+- Refresh the README guides and the current panel/compact-head/orb screenshots.
 - Complete the Omarchy Quattro bar plugin with Buddy's themed head, explicit engine startup, AI settings and game-window controls.
 - Use Buddy's head in the desktop application launcher as well as the tray.
 - Add marketplace preview, dependency/setup/removal documentation and a submission draft.
