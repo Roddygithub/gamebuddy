@@ -1,5 +1,5 @@
 """GameBuddy — voice-first AI gaming companion for Linux."""
 
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 APP_ID = "gamebuddy"
 ASSISTANT_DEFAULT_NAME = "Buddy"
