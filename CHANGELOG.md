@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.6.1 — 2026-11-10
+## 0.6.2 — 2026-11-10
+
+- **Larger tray icon**: the symbolic icon now fills more of the canvas so it matches
+  the size of other plugins' tray icons.
 
 - **Tray icon now follows updates**: install/update refreshes the hicolor icon cache and
   restarts the Omarchy bar, so the system-tray icon no longer keeps a stale pixmap after an
