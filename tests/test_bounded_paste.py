@@ -1,4 +1,4 @@
-"""A paste into any GameBuddy field is truncated, not ingested whole."""
+"""A paste into any GameBuddy field is bounded, not ingested whole."""
 
 from __future__ import annotations
 
@@ -16,12 +16,11 @@ def qapp():
     yield app
 
 
-def test_paste_is_truncated_and_single_line(qapp):
+def test_oversized_paste_is_rejected(qapp):
     QApplication.clipboard().setText("x" * (PASTE_LIMIT * 5) + "\nsecond line")
     field = BoundedLineEdit()
     field._bounded_paste()
-    assert len(field.text()) == PASTE_LIMIT
-    assert "\n" not in field.text()
+    assert field.text() == ""
 
 
 def test_ctrl_v_goes_through_the_bounded_path(qapp):
@@ -29,7 +28,15 @@ def test_ctrl_v_goes_through_the_bounded_path(qapp):
     field = BoundedLineEdit()
     event = QKeyEvent(QKeyEvent.KeyPress, Qt.Key_V, Qt.ControlModifier, "v")
     field.keyPressEvent(event)
-    assert len(field.text()) == PASTE_LIMIT
+    assert field.text() == ""
+
+
+def test_within_limit_paste_is_inserted(qapp):
+    payload = "z" * 100
+    QApplication.clipboard().setText(payload)
+    field = BoundedLineEdit()
+    field._bounded_paste()
+    assert field.text() == payload
 
 
 def test_max_length_is_set_as_a_backstop(qapp):
