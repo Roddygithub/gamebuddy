@@ -8,11 +8,15 @@ rectangle where our own overlay sits so the model never sees the widget.
 from __future__ import annotations
 
 import io
+import json
 import os
 import platform
 import shutil
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
+
+from gamebuddy.paths import data_dir
 
 
 class CaptureError(RuntimeError):
@@ -50,11 +54,60 @@ class WindowInfo:
         return f"{self.title or '(untitled)'}{app}"
 
 
+def remembered_window_file() -> Path:
+    return data_dir() / "window.json"
+
+
+def remember_window(window: WindowInfo | None, path: Path | None = None) -> None:
+    """Persist the chosen window's identity so the next start can re-select it."""
+    path = path or remembered_window_file()
+    try:
+        if window is None:
+            path.unlink(missing_ok=True)
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"app_id": window.app_id, "title": window.title}, ensure_ascii=False))
+    except OSError:
+        pass  # window memory is a convenience; never fail a selection over it
+
+
+def load_remembered_window(path: Path | None = None) -> tuple[str, str]:
+    """(app_id, title) of the last selected window, or ("", "")."""
+    path = path or remembered_window_file()
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return "", ""
+    if not isinstance(data, dict):
+        return "", ""
+    return str(data.get("app_id") or ""), str(data.get("title") or "")
+
+
+def find_same_window(windows: list[WindowInfo], app_id: str, title: str) -> WindowInfo | None:
+    """Re-find a remembered window without guessing.
+
+    Prefers an exact title match, falls back to the app's only window (titles
+    change with the game's menu), and returns None when several windows share
+    the app id and none carries the remembered title.
+    """
+    if not app_id or app_id.lower() == "gamebuddy":
+        return None
+    same_app = [w for w in windows if w.app_id == app_id]
+    for w in same_app:
+        if w.title == title:
+            return w
+    return same_app[0] if len(same_app) == 1 else None
+
+
 class CaptureBackend:
     name = "none"
 
     def list_windows(self) -> list[WindowInfo]:
         return []
+
+    def remembered_window(self) -> WindowInfo | None:
+        app_id, title = load_remembered_window()
+        return find_same_window(self.list_windows(), app_id, title) if app_id else None
 
     def find_window(self, window_id: str) -> WindowInfo | None:
         for w in self.list_windows():

@@ -15,7 +15,17 @@ from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from gamebuddy import APP_ID
-from gamebuddy.capture import CaptureBackend, CaptureError, Rect, WindowInfo, get_backend, to_jpeg
+from gamebuddy.capture import (
+    CaptureBackend,
+    CaptureError,
+    Rect,
+    WindowInfo,
+    find_same_window,
+    get_backend,
+    load_remembered_window,
+    remember_window,
+    to_jpeg,
+)
 from gamebuddy.capture.base import overlay_mask
 from gamebuddy.coach import CoachPipeline
 from gamebuddy.coach.gate import Observation
@@ -153,6 +163,7 @@ class GameBuddyApp(QObject):
         except RuntimeError as exc:
             log.error("%s", exc)
             raise
+        self._restore_window()
         pin = self.store.load_pin()
         if pin:
             self.widget.show_pin(pin["title"], pin["markdown"], pin["kind"])
@@ -353,8 +364,22 @@ class GameBuddyApp(QObject):
         if dlg.exec() and dlg.selected:
             self.select_window(dlg.selected)
 
+    def _restore_window(self) -> None:
+        """Re-select the window chosen last session when it is still open."""
+        app_id, title = load_remembered_window()
+        if not app_id:
+            return
+        try:
+            window = find_same_window(self.backend.list_windows(), app_id, title)
+        except Exception as exc:  # noqa: BLE001 — a missing window list is not an error
+            log.debug("window memory skipped: %s", exc)
+            return
+        if window:
+            self.select_window(window)
+
     def select_window(self, window: WindowInfo | None) -> None:
         self.window = window
+        remember_window(window)
         self.kin.game_title = window.title if window else ""
         if self.coach:
             self.coach.game_title = self.kin.game_title

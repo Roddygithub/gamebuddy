@@ -75,6 +75,11 @@ Sous Hyprland, la capture utilise l’identifiant de fenêtre `stableId` et `gri
 ne récupérer que le jeu, même sur un autre espace de travail. Une version récente de
 Hyprland et de grim est nécessaire ; en cas d’échec, aucune capture du bureau ne la remplace.
 
+Ce choix est mémorisé : au démarrage suivant, GameBuddy resélectionne la fenêtre si une
+fenêtre de la même application et du même titre est ouverte, ou si cette application n’a
+qu’une seule fenêtre. Si plusieurs fenêtres partagent l’application sans le titre enregistré,
+il laisse la sélection vide au lieu de deviner.
+
 ### Réutiliser Superwhisper
 
 Si Superwhisper est installé, choisis `superwhisper` dans **Réglages → Voice → Speech to text**

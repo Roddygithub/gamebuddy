@@ -110,6 +110,11 @@ On Hyprland, capture uses the window's `stableId` and `grim -T` to capture only 
 even on another workspace. Recent Hyprland and grim versions are required; a failed
 window capture never falls back to a desktop screenshot.
 
+That choice is remembered: on the next start GameBuddy re-selects the window when one with the
+same application and title is open, or when that application has only one window. If several
+windows share the application and none carries the saved title, it leaves the selection empty
+instead of guessing.
+
 ### Reuse Superwhisper
 
 With Superwhisper installed, select `superwhisper` in **Settings → Voice → Speech to text**

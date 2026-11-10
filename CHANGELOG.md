@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **The selected game window survives a restart**: GameBuddy remembers the window you chose and
+  re-selects it on the next start when a window with the same application and title is open, or
+  when that application has a single window. Ambiguous matches are left unselected rather than
+  guessing, so a browser or a terminal is never captured by mistake.
+
 ## 0.4.0 — 2026-11-10
 
 - **Superwhisper as a speech-to-text engine**: choose `superwhisper` (or `stt = "superwhisper"`)
