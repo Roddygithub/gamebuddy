@@ -19,8 +19,6 @@ import tomli_w
 from gamebuddy import ASSISTANT_DEFAULT_NAME
 from gamebuddy.paths import config_file, ensure_dirs
 
-SUPPORTED_LANGUAGES = ("fr", "en", "de", "es", "it", "pt-BR", "pt-PT")
-
 
 @dataclass
 class GeneralConfig:
@@ -115,7 +113,6 @@ class UIConfig:
     always_on_top: bool = True
     start_hidden: bool = False
     font_size: int = 13
-    theme: str = "dark"  # dark | omarchy (reads ~/.config/omarchy/current/theme colors if present)
     mode: str = "orb"  # orb (avatar + last words, click to open) | panel (full chat window)
 
 

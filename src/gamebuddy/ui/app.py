@@ -8,9 +8,10 @@ import sys
 import threading
 import time
 from importlib.resources import files
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer
+from PySide6.QtCore import QFileSystemWatcher, QObject, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -30,14 +31,14 @@ from gamebuddy.capture.base import overlay_mask
 from gamebuddy.coach import CoachPipeline
 from gamebuddy.coach.gate import Observation
 from gamebuddy.config import Config, load_config, save_config
-from gamebuddy.i18n import Translator
+from gamebuddy.i18n import Translator, is_rtl
 from gamebuddy.ipc import IPCServer
 from gamebuddy.kin import Kin, KinCallbacks
 from gamebuddy.llm import make_provider
 from gamebuddy.llm.router import ProviderError, coach_model
 from gamebuddy.memory import Store
 from gamebuddy.ui.bridge import Bridge
-from gamebuddy.ui.theme import DEFAULT, omarchy_colors, stylesheet
+from gamebuddy.ui.theme import THEME_DIR, omarchy_colors, stylesheet, theme_file
 from gamebuddy.ui.widget import BuddyWidget
 
 log = logging.getLogger(__name__)
@@ -97,16 +98,45 @@ class GameBuddyApp(QObject):
         )
         self.widget.ptt_mode = self.cfg.hotkeys.mode
         self._apply_theme()
+        self._apply_direction()
+        self._watch_theme()
         self._apply_window_flags()
         self._connect()
 
     # ---- setup ---------------------------------------------------------------
     def _apply_theme(self) -> None:
-        colors = omarchy_colors() if self.cfg.ui.theme == "omarchy" else DEFAULT
+        # Always follow the desktop: the active Omarchy palette, DEFAULT without one.
+        colors = omarchy_colors()
         app = QApplication.instance()
         if app:
             app.setStyleSheet(stylesheet(colors, self.cfg.ui.font_size, self.cfg.ui.opacity))
         self.widget.set_theme_colors(colors)
+
+    def _apply_direction(self) -> None:
+        """Arabic, Hebrew, Persian and Urdu read right to left; mirror the layout."""
+        app = QApplication.instance()
+        if app:
+            app.setLayoutDirection(Qt.RightToLeft if is_rtl(self.tr.language) else Qt.LeftToRight)
+
+    def _watch_theme(self) -> None:
+        """Repaint when `omarchy theme set` swaps the palette, no restart needed."""
+        self._theme_timer = QTimer(self)
+        self._theme_timer.setSingleShot(True)
+        self._theme_timer.setInterval(250)  # theme set writes several files in a row
+        self._theme_timer.timeout.connect(self._on_theme_changed)
+        self._theme_watcher = QFileSystemWatcher(self)
+        for path in (str(THEME_DIR.parent), str(theme_file())):
+            if Path(path).exists():
+                self._theme_watcher.addPath(path)
+        self._theme_watcher.directoryChanged.connect(lambda _p: self._theme_timer.start())
+        self._theme_watcher.fileChanged.connect(lambda _p: self._theme_timer.start())
+
+    def _on_theme_changed(self) -> None:
+        path = str(theme_file())
+        # QFileSystemWatcher drops unwatched files; the swapped symlink is a new one.
+        if Path(path).is_file() and path not in self._theme_watcher.files():
+            self._theme_watcher.addPath(path)
+        self._apply_theme()
 
     def _apply_window_flags(self) -> None:
         flags = Qt.FramelessWindowHint | Qt.Window
@@ -643,6 +673,7 @@ class GameBuddyApp(QObject):
         )
         if dlg.exec():
             self.tr.set_language(self.cfg.general.language)
+            self._apply_direction()
             self.kin.language = self.tr.language
             self.kin.reset_provider()
             if self.tray:
@@ -678,6 +709,7 @@ class GameBuddyApp(QObject):
         wiz = OnboardingWizard(self.cfg, self.tr, self.backend, self.widget)
         if wiz.exec():
             self.tr.set_language(self.cfg.general.language)
+            self._apply_direction()
             self.kin.language = self.tr.language
             self.kin.reset_provider()
             self.widget.title.setText(self.cfg.general.assistant_name)

@@ -19,8 +19,8 @@ from PySide6.QtWidgets import (
 )
 
 from gamebuddy.capture import CaptureBackend, WindowInfo
-from gamebuddy.config import SUPPORTED_LANGUAGES, Config, save_config
-from gamebuddy.i18n import Translator, language_display_name
+from gamebuddy.config import Config, save_config
+from gamebuddy.i18n import SUPPORTED_LANGUAGES, Translator, language_display_name
 from gamebuddy.speech.stt import voxtype_available
 from gamebuddy.ui.settings import PROVIDERS
 

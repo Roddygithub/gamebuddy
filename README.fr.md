@@ -278,7 +278,8 @@ Configuration 100 % locale : `provider = "ollama"`, `model = "qwen3-vl"` (vision
 | X11 | fenêtre choisie (`wmctrl` + ImageMagick) | écouteur global intégré (`pip install 'gamebuddy[x11]'`, `hotkeys.x11_listener = true`) |
 
 `install.sh` installe les paquets système via pacman, apt, dnf ou zypper ; le reste passe par pip.
-Omarchy n'apporte rien d'obligatoire : ses couleurs de thème et sa pile de dictée voxtype sont reprises si présentes.
+Omarchy n'apporte rien d'obligatoire : l'overlay suit le thème actif en direct et parle les 50 langues
+de `omarchy language list`, et sa pile de dictée voxtype est reprise si présente.
 
 ## Mises à jour
 

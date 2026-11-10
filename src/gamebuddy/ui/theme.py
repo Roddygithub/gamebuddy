@@ -19,29 +19,52 @@ DEFAULT = {
 }
 
 
+# `omarchy theme set` swaps this directory, so watching it follows the theme.
+THEME_DIR = Path.home() / ".config" / "omarchy" / "current" / "theme"
+
+
+def theme_file() -> Path:
+    """The palette file GameBuddy reads; also watched for live theme changes."""
+    return THEME_DIR / "colors.toml"
+
+
+def _mix(base: str, toward: str, amount: float) -> str:
+    a = [int(base[i : i + 2], 16) for i in (1, 3, 5)]
+    b = [int(toward[i : i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * amount):02x}" for x, y in zip(a, b, strict=True))
+
+
 def omarchy_colors() -> dict[str, str]:
-    """Best-effort read of ~/.config/omarchy/current/theme/colors.toml (or alacritty.toml)."""
-    base = Path.home() / ".config" / "omarchy" / "current" / "theme"
+    """The active Omarchy palette, or DEFAULT when no theme file is readable.
+
+    Omarchy's colors.toml uses `accent` plus the `color0`-`color15` ANSI slots;
+    older palettes used named slots (`magenta`, `green`…), still accepted.
+    """
     colors = dict(DEFAULT)
     for name in ("colors.toml", "alacritty.toml"):
-        path = base / name
+        path = THEME_DIR / name
         if not path.is_file():
             continue
         text = path.read_text(errors="replace")
-        found = {k: v for k, v in re.findall(r'^\s*(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"', text, re.M)}
+        found = dict(re.findall(r'^\s*([\w-]+)\s*=\s*"(#[0-9a-fA-F]{6})"', text, re.M))
         if "background" in found:
             colors["bg"] = found["background"]
-            colors["panel"] = found.get("background", colors["panel"])
         if "foreground" in found:
             colors["text"] = found["foreground"]
-        for key in ("magenta", "blue", "cyan"):
-            if key in found:
-                colors["accent"] = found[key]
-                break
-        if "green" in found:
-            colors["accent2"] = found["green"]
-        if "red" in found:
-            colors["danger"] = found["red"]
+        if "color0" in found:
+            colors["panel"] = colors["panel2"] = colors["user"] = found["color0"]
+        if "color8" in found:
+            colors["muted"] = found["color8"]
+        accent = next((found[k] for k in ("accent", "color4", "blue", "magenta", "cyan") if k in found), "")
+        if accent:
+            colors["accent"] = accent
+            colors["bro"] = _mix(colors["bg"], accent, 0.22)
+        green = found.get("color2") or found.get("green")
+        if green:
+            colors["accent2"] = green
+        red = found.get("color1") or found.get("red")
+        if red:
+            colors["danger"] = red
         break
     return colors
 

@@ -6,7 +6,7 @@ GameBuddy is one Python process (PySide6) plus small system tools. No daemon, no
 src/gamebuddy/
 ├── cli.py            command line; talks to the running widget over IPC
 ├── config.py         TOML config (dataclasses, defaults, 0600 when a key is stored)
-├── i18n.py           7 UI languages, auto-detected from the locale
+├── i18n.py           all 50 Omarchy languages, from ~/.config/omarchy/language else the locale
 ├── ipc.py            Unix socket, newline JSON; single-instance lock; event broadcast
 ├── kin.py            orchestrator: system prompt, tool loop, history, pins, memory
 ├── prompts.py        Ask-mode and Coach-mode prompts

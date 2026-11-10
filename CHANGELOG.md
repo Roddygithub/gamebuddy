@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — 2026-11-10
+
+- **The overlay follows the Omarchy theme**: Buddy now reads the active theme's `colors.toml`
+  (background, foreground, `accent`, and the ANSI red/green/grey slots) instead of the built-in
+  palette, and repaints itself when `omarchy theme set` swaps themes — no restart. The unused
+  `ui.theme` option is gone: following the desktop is the only behaviour.
+- **All 50 Omarchy languages**: every language `omarchy language list` offers has a full UI
+  translation, the language picker lists them by native name, `~/.config/omarchy/language` is
+  honoured before the session locale, and Arabic, Hebrew, Persian and Urdu render right to left.
+
 ## 0.4.2 — 2026-11-10
 
 - **`gamebuddy ask "…"` prints the answer**: the command waits for the reply on the same IPC

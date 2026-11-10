@@ -319,7 +319,8 @@ Local, offline setup: `provider = "ollama"`, `model = "qwen3-vl"` (vision + tool
 | X11 | selected window (`wmctrl` + ImageMagick) | built-in global listener (`pip install 'gamebuddy[x11]'`, `hotkeys.x11_listener = true`) |
 
 `install.sh` installs system packages with pacman, apt, dnf or zypper; everything else is pip.
-Omarchy adds nothing mandatory: its theme colors and its voxtype dictation stack are picked up when present.
+Omarchy adds nothing mandatory: the overlay follows the active theme live and speaks all 50 languages
+`omarchy language list` offers, and the voxtype dictation stack is picked up when present.
 
 ## Updates
 

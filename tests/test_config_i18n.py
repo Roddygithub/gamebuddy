@@ -1,3 +1,4 @@
+from gamebuddy import i18n
 from gamebuddy.config import Config, load_config, save_config
 from gamebuddy.i18n import Translator, detect_language
 
@@ -40,7 +41,9 @@ def test_translator_fallback_and_format():
     assert tr("missing_key") == "missing_key"
 
 
-def test_detect_language(monkeypatch):
+def test_detect_language(monkeypatch, tmp_path):
+    # Omarchy's own choice outranks LANG; keep it out of this test.
+    monkeypatch.setattr(i18n, "OMARCHY_LANGUAGE_FILE", tmp_path / "language")
     monkeypatch.setenv("LC_ALL", "pt_BR.UTF-8")
     assert detect_language() == "pt-BR"
     monkeypatch.setenv("LC_ALL", "pt_PT.UTF-8")
@@ -48,6 +51,8 @@ def test_detect_language(monkeypatch):
     monkeypatch.setenv("LC_ALL", "de_DE.UTF-8")
     assert detect_language() == "de"
     monkeypatch.setenv("LC_ALL", "ja_JP.UTF-8")
+    assert detect_language() == "ja"
+    monkeypatch.setenv("LC_ALL", "xx_YY.UTF-8")
     assert detect_language() == "en"
 
 

@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from gamebuddy.config import SUPPORTED_LANGUAGES, Config, save_config
-from gamebuddy.i18n import Translator, language_display_name
+from gamebuddy.config import Config, save_config
+from gamebuddy.i18n import SUPPORTED_LANGUAGES, Translator, language_display_name
 
 PROVIDERS = ["codex", "anthropic", "openai", "ollama", "openai_compatible"]
 STT = ["openai", "superwhisper", "voxtype", "faster_whisper", "whispercpp", "none"]
