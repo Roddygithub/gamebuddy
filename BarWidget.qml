@@ -90,25 +90,8 @@ Ui.BarWidget {
     bar: root.bar
     active: root.listening
     dimmed: !root.running
-    iconComponent: Component {
-      Item {
-        Image {
-          id: buddyImage
-          anchors.fill: parent
-          source: Qt.resolvedUrl("src/gamebuddy/assets/gamebuddy-symbolic.svg")
-          sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
-          sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
-          visible: false
-          layer.enabled: true
-        }
-        MultiEffect {
-          anchors.fill: parent
-          source: buddyImage
-          colorization: 1.0
-          colorizationColor: root.listening ? button.activeColor : button.foreground
-        }
-      }
-    }
+    text: "\uf025"
+    fontFamily: "JetBrainsMono Nerd Font"
     tooltipText: !root.installed ? "GameBuddy — install the engine first (see README)"
       : root.running ? "GameBuddy — " + root.model + "\nClick: show/hide · Right-click: AI settings · Middle-click: game window"
       : "GameBuddy — click to start"
