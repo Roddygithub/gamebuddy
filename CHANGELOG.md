@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.2 — 2026-11-10
+
+- **`gamebuddy ask "…"` prints the answer**: the command waits for the reply on the same IPC
+  connection and exits non-zero with the reason when the engine fails, so it composes in scripts
+  and keybinds. `--no-wait` keeps the old fire-and-forget behaviour, and the IPC protocol gained
+  the matching `{"cmd":"ask","wait":true}` request.
+- **Engine errors follow the UI language**: missing Superwhisper, Codex login, voxtype and API-key
+  messages are translated in all seven UI languages instead of always appearing in English.
+- Refresh the marketplace preview and README screenshots from the current panel.
+
 ## 0.4.1 — 2026-11-10
 
 - **The selected game window survives a restart**: GameBuddy remembers the window you chose and

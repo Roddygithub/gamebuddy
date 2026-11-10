@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.roddygithub.gamebuddy",
   "name": "GameBuddy",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": "Roddy Salardon",
   "license": "MIT",
   "description": "Voice-first AI gaming companion: adaptive Buddy overlay, voice chat and AI controls from the Omarchy bar.",

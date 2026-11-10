@@ -42,23 +42,25 @@ from gamebuddy.ui.widget import BuddyWidget
 
 log = logging.getLogger(__name__)
 
+# Engine error codes → i18n keys, so the friendly text follows the UI language.
 _FRIENDLY = {
-    "superwhisper_not_installed": "Superwhisper not found — install it or choose another STT engine in Settings.",
-    "superwhisper_timeout": "Superwhisper took too long to transcribe — check `superwhisper status` and retry.",
-    "codex_not_installed": "Codex CLI not found — install it with `npm install -g @openai/codex` and run `codex login`.",
-    "codex_not_logged_in": "Codex is not signed in — run `codex login` in a terminal (ChatGPT Plus/Pro account).",
-    "codex_timeout": "Codex took too long to answer — try again or lower the reasoning effort in Settings.",
-    "voxtype_not_installed": "voxtype not found — install it (Omarchy: Install > AI > Dictation) or pick another STT engine in Settings.",
-    "voxtype_no_model": "voxtype has no model yet — run `voxtype setup --download` once.",
-    "voxtype_timeout": "voxtype took too long to transcribe — try a smaller model (`voxtype setup`).",
-    "missing_api_key": "No API key configured — open Settings, or choose the `codex` provider (ChatGPT Plus).",
+    "superwhisper_not_installed": "err_superwhisper_missing",
+    "superwhisper_timeout": "err_superwhisper_timeout",
+    "codex_not_installed": "err_codex_missing",
+    "codex_not_logged_in": "err_codex_login",
+    "codex_timeout": "err_codex_timeout",
+    "voxtype_not_installed": "err_voxtype_missing",
+    "voxtype_no_model": "err_voxtype_model",
+    "voxtype_timeout": "err_voxtype_timeout",
+    "missing_api_key": "err_missing_key",
 }
 
 
-def friendly_error(message: str) -> str:
-    for key, text in _FRIENDLY.items():
-        if key in message:
-            return text
+def friendly_error(message: str, tr: Translator | None = None) -> str:
+    translator = tr or Translator("en")
+    for code, key in _FRIENDLY.items():
+        if code in message:
+            return translator(key)
     return message
 
 
@@ -450,7 +452,7 @@ class GameBuddyApp(QObject):
             key = "error_no_key" if "missing_api_key" in str(exc) else "error_generic"
             self.bridge.error.emit(self.tr(key, error=str(exc)))
         except Exception as exc:  # noqa: BLE001
-            self.bridge.error.emit(self.tr("error_generic", error=friendly_error(str(exc))))
+            self.bridge.error.emit(self.tr("error_generic", error=friendly_error(str(exc), self.tr)))
 
     def _on_reply_done(self, text: str) -> None:
         self.widget.end_stream(text)
@@ -482,7 +484,7 @@ class GameBuddyApp(QObject):
 
     def _on_error(self, message: str) -> None:
         self.widget.end_stream("")
-        self.widget.add_error(friendly_error(message))
+        self.widget.add_error(friendly_error(message, self.tr))
         self.widget.set_status("ready")
 
     # ---- voice: push-to-talk -------------------------------------------------
@@ -550,7 +552,7 @@ class GameBuddyApp(QObject):
             key = "error_no_key" if "missing_api_key" in str(exc) else "error_generic"
             self.bridge.error.emit(self.tr(key, error=str(exc)))
         except Exception as exc:  # noqa: BLE001
-            self.bridge.error.emit(self.tr("error_generic", error=friendly_error(str(exc))))
+            self.bridge.error.emit(self.tr("error_generic", error=friendly_error(str(exc), self.tr)))
 
     # ---- voice: hands-free ---------------------------------------------------
     def toggle_hands_free(self) -> None:
@@ -717,8 +719,24 @@ class GameBuddyApp(QObject):
                 }
             except Exception as exc:  # noqa: BLE001
                 return {"ok": False, "error": str(exc)}
+        if cmd == "ask" and req.get("wait"):
+            # Scriptable ask: answer on this connection instead of queueing to the UI.
+            return self._ask_blocking(str(req.get("text", "")).strip())
         self.bridge.command.emit(req)
         return {"ok": True, "queued": cmd}
+
+    def _ask_blocking(self, text: str) -> dict[str, Any]:
+        """One exchange on the calling thread; returns the reply text or the error."""
+        if not text:
+            return {"ok": False, "error": "empty question"}
+        if self.kin.busy:
+            return {"ok": False, "error": "busy — another question is being answered"}
+        self.bridge.user_text.emit(text)
+        self.bridge.stream_started.emit()
+        reply = self.kin.ask(text, self.capture_game())
+        if reply.strip():
+            return {"ok": True, "reply": reply}
+        return {"ok": False, "error": friendly_error(self.kin.last_error or "no answer", self.tr)}
 
     def _handle_command_gui(self, req: dict[str, Any]) -> None:
         cmd, action = req.get("cmd"), req.get("action", "toggle")

@@ -263,8 +263,10 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("run", help="start the widget (default)")
     ptt = sub.add_parser("ptt", help="push-to-talk control")
     ptt.add_argument("action", choices=["start", "stop", "toggle"], nargs="?", default="toggle")
-    ask = sub.add_parser("ask", help="send a text question to the running widget")
+    ask = sub.add_parser("ask", help="ask a question and print the answer")
     ask.add_argument("text", nargs="+")
+    ask.add_argument("--no-wait", action="store_true", help="return immediately, without the answer")
+    ask.add_argument("--timeout", type=float, default=300.0, help="seconds to wait for the answer")
     sub.add_parser("toggle", help="show/hide the widget")
     sub.add_parser("show")
     sub.add_parser("hide")
@@ -308,7 +310,22 @@ def main(argv: list[str] | None = None) -> int:
     if cmd == "ptt":
         return _send({"cmd": "ptt", "action": args.action})
     if cmd == "ask":
-        return _send({"cmd": "ask", "text": " ".join(args.text)})
+        text = " ".join(args.text)
+        if args.no_wait:
+            return _send({"cmd": "ask", "text": text})
+        if not is_running():
+            print("gamebuddy: widget is not running (start it with `gamebuddy`)", file=sys.stderr)
+            return 3
+        try:
+            resp = send_command({"cmd": "ask", "text": text, "wait": True}, timeout=args.timeout)
+        except TimeoutError:
+            print(f"gamebuddy: no answer after {args.timeout:g}s", file=sys.stderr)
+            return 1
+        if not resp.get("ok"):
+            print(f"gamebuddy: {resp.get('error', 'no answer')}", file=sys.stderr)
+            return 1
+        print(resp.get("reply", ""))
+        return 0
     if cmd in ("toggle", "show", "hide", "status", "unpin", "settings", "ai-settings", "quit"):
         return _send({"cmd": cmd})
     if cmd == "windows":

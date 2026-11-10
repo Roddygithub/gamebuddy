@@ -355,7 +355,7 @@ GNOME, KDE and X11 users bind the same commands with their desktop's shortcut se
 |---|---|
 | `gamebuddy` | start the widget (single instance) |
 | `gamebuddy ptt start\|stop\|toggle` | push-to-talk |
-| `gamebuddy ask "which item?"` | type a question from a script |
+| `gamebuddy ask "which item?"` | ask from a script and print the answer (`--no-wait` to fire and forget) |
 | `gamebuddy toggle` / `show` / `hide` | widget visibility |
 | `gamebuddy listen on\|off` | hands-free listening |
 | `gamebuddy coach on\|off` | coach mode |
@@ -388,7 +388,7 @@ compositor behaviour need a desktop session.
 
 ## Status
 
-Current version: **0.4.1**. The Omarchy marketplace submission passed structural and Quattro validation, and a maintainer approved revision `b73930d` after capability review; this release is submitted as the next published revision. The engine requires manual setup. Track the current [submission and listing status](https://github.com/omacom/omarchy-plugin-marketplace/issues/14633).
+Current version: **0.4.2**. The Omarchy marketplace submission passed structural and Quattro validation, and a maintainer approved revision `b73930d` after capability review; this release is submitted as the next published revision. The engine requires manual setup. Track the current [submission and listing status](https://github.com/omacom/omarchy-plugin-marketplace/issues/14633).
 
 Known limits:
 

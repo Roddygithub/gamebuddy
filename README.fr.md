@@ -306,7 +306,7 @@ en fenêtré / plein écran sans bordure. La prise en charge du plein écran exc
 |---|---|
 | `gamebuddy` | lance le widget (instance unique) |
 | `gamebuddy ptt start\|stop\|toggle` | push-to-talk |
-| `gamebuddy ask "quel objet ?"` | pose une question depuis un script |
+| `gamebuddy ask "quel objet ?"` | pose une question depuis un script et affiche la réponse (`--no-wait` pour ne pas attendre) |
 | `gamebuddy toggle` / `show` / `hide` | visibilité du widget |
 | `gamebuddy listen on\|off` | écoute mains libres |
 | `gamebuddy coach on\|off` | mode coach |
@@ -324,7 +324,7 @@ en fenêtré / plein écran sans bordure. La prise en charge du plein écran exc
 
 ## État du projet
 
-Version actuelle : **0.4.1**. La validation de structure et de compatibilité Quattro du marketplace Omarchy est passée. Un mainteneur a approuvé la révision `b73930d` après revue des capacités ; cette version est soumise comme révision publiée suivante. Le moteur nécessite une installation manuelle : [suivre la demande et la publication](https://github.com/omacom/omarchy-plugin-marketplace/issues/14633).
+Version actuelle : **0.4.2**. La validation de structure et de compatibilité Quattro du marketplace Omarchy est passée. Un mainteneur a approuvé la révision `b73930d` après revue des capacités ; cette version est soumise comme révision publiée suivante. Le moteur nécessite une installation manuelle : [suivre la demande et la publication](https://github.com/omacom/omarchy-plugin-marketplace/issues/14633).
 
 Sur les autres backends utilisant une capture par région, une fenêtre qui recouvre le jeu
 peut apparaître dans l’image ; Hyprland utilise la capture directe de fenêtre.

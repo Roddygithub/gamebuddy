@@ -45,6 +45,7 @@ class Kin:
         self.game_title = ""
         self.language = "en"
         self.busy = False
+        self.last_error = ""  # why the last exchange produced no reply
 
     # ---- provider --------------------------------------------------------
     @property
@@ -63,10 +64,12 @@ class Kin:
             return ""
         with self._lock:
             self.busy = True
+            self.last_error = ""
             try:
                 return self._ask(text.strip(), screenshot, media_type)
             except Exception as exc:  # noqa: BLE001
                 log.warning("ask failed: %s", exc)
+                self.last_error = str(exc)
                 self.cb.on_error(str(exc))
                 return ""
             finally:
