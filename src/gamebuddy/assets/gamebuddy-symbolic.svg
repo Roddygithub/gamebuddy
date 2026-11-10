@@ -1,15 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
   <g fill="#deddda">
-    <!-- headset: band, cups and the mic arm reaching the mouth -->
-    <path d="M2.4 10.6a9.6 9.6 0 0 1 19.2 0v1.5h-2.4v-1.5a7.2 7.2 0 0 0-14.4 0v1.5H2.4z"/>
-    <rect x="1.2" y="10.4" width="3.6" height="5.2" rx="1.8"/>
-    <rect x="19.2" y="10.4" width="3.6" height="5.2" rx="1.8"/>
-    <path d="M21 15.6q.8 3.6-3.8 3.8l.15-2q2.2 0 1.7-1.8z"/>
-    <circle cx="17" cy="18.9" r="1.2"/>
-    <!-- blob with the eyes and mouth punched through -->
-    <path fill-rule="evenodd" d="M12 3.6c5.4 0 9.6 3.8 9.6 8.8S17.4 21.2 12 21.2 2.4 17.4 2.4 12.4 6.6 3.6 12 3.6z
-      M9.6 11.2a1.5 2.2 0 1 0 0 4.4 1.5 2.2 0 1 0 0-4.4z
-      M14.4 11.2a1.5 2.2 0 1 0 0 4.4 1.5 2.2 0 1 0 0-4.4z
-      M8.9 17.6q3.1 2.4 6.2 0l-.9-.9q-2.2 1.7-4.4 0z"/>
+    <!-- blob with the eyes punched through -->
+    <path fill-rule="evenodd" d="M12 4a9 9 0 1 0 0 18 9 9 0 1 0 0-18z
+      M9 11.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 1 0 0-4.4z
+      M15 11.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 1 0 0-4.4z"/>
+    <!-- headset: thick band + prominent cups -->
+    <path d="M2.6 10.8a9.4 9.4 0 0 1 18.8 0" fill="none" stroke="#deddda" stroke-width="2.8" stroke-linecap="round"/>
+    <rect x="0.8" y="9" width="4.4" height="6.4" rx="2.2"/>
+    <rect x="18.8" y="9" width="4.4" height="6.4" rx="2.2"/>
   </g>
 </svg>
