@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from gamebuddy.config import Config, save_config
 from gamebuddy.i18n import SUPPORTED_LANGUAGES, Translator, language_display_name
+from gamebuddy.ui.inputs import BoundedLineEdit
 
 PROVIDERS = ["codex", "anthropic", "openai", "ollama", "openai_compatible"]
 STT = ["openai", "superwhisper", "voxtype", "faster_whisper", "whispercpp", "none"]
@@ -47,7 +48,7 @@ class SettingsDialog(QDialog):
         for code in SUPPORTED_LANGUAGES:
             self.language.addItem(language_display_name(code), code)
         self.language.setCurrentIndex(max(0, self.language.findData(cfg.general.language)))
-        self.name = QLineEdit(cfg.general.assistant_name)
+        self.name = BoundedLineEdit(cfg.general.assistant_name)
         self.personality = QComboBox()
         self.personality.addItems(["coach", "friendly", "concise"])
         self.personality.setCurrentText(cfg.general.personality)
@@ -94,10 +95,10 @@ class SettingsDialog(QDialog):
         self.provider = QComboBox()
         self.provider.addItems(PROVIDERS)
         self.provider.setCurrentText(cfg.llm.provider)
-        self.model = QLineEdit(cfg.llm.model)
-        self.base_url = QLineEdit(cfg.llm.base_url)
+        self.model = BoundedLineEdit(cfg.llm.model)
+        self.base_url = BoundedLineEdit(cfg.llm.base_url)
         self.base_url.setPlaceholderText("http://localhost:11434/v1")
-        self.api_key = QLineEdit(cfg.llm.api_key)
+        self.api_key = BoundedLineEdit(cfg.llm.api_key)
         self.api_key.setEchoMode(QLineEdit.Password)
         self.api_key.setPlaceholderText("leave empty to use the environment variable")
         self.effort = QComboBox()
@@ -155,11 +156,11 @@ class SettingsDialog(QDialog):
         self.tts = QComboBox()
         self.tts.addItems(TTS)
         self.tts.setCurrentText(cfg.speech.tts)
-        self.tts_voice = QLineEdit(cfg.speech.tts_voice)
-        self.piper_model = QLineEdit(cfg.speech.piper_model)
+        self.tts_voice = BoundedLineEdit(cfg.speech.tts_voice)
+        self.piper_model = BoundedLineEdit(cfg.speech.piper_model)
         self.speak = QCheckBox()
         self.speak.setChecked(cfg.speech.speak_replies)
-        self.input_device = QLineEdit(cfg.audio.input_device)
+        self.input_device = BoundedLineEdit(cfg.audio.input_device)
         self.vad = QDoubleSpinBox()
         self.vad.setDecimals(3)
         self.vad.setRange(0.001, 0.5)
@@ -191,7 +192,7 @@ class SettingsDialog(QDialog):
         self.coach_interval = QDoubleSpinBox()
         self.coach_interval.setRange(1.0, 60.0)
         self.coach_interval.setValue(cfg.coach.interval_s)
-        self.coach_model = QLineEdit(cfg.coach.model)
+        self.coach_model = BoundedLineEdit(cfg.coach.model)
         self.coach_model.setPlaceholderText("cheap default for the provider")
         self.coach_conf = QDoubleSpinBox()
         self.coach_conf.setRange(0.3, 1.0)

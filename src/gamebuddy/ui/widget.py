@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 
 from PySide6.QtCore import QPoint, Qt, QTimer, Signal
@@ -10,7 +11,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMenu,
     QProgressBar,
     QScrollArea,
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from gamebuddy.i18n import Translator
 from gamebuddy.ui.avatar import Avatar
+from gamebuddy.ui.inputs import BoundedLineEdit
 
 ORB_W, ORB_H = 260, 96
 CAPTION_MAX = 140
@@ -38,16 +39,29 @@ def fit_panel(width: int, height: int, screen_width: int, screen_height: int) ->
     return min(width, max(1, screen_width - 32)), min(height, max(1, screen_height - 32))
 
 
+# Budgets applied *before* Qt parses anything the model produced.
+BUBBLE_LIMIT = 4000  # characters of one model answer
+PIN_LIMIT = 12000  # characters of pinned content
+PIN_LINES = 200  # rows of pinned content
+FEED_BUBBLES = 60  # oldest bubbles dropped from the feed
+
+
+def _budget(text: str, limit: int = BUBBLE_LIMIT) -> str:
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
 def _plain(markdown: str) -> str:
     doc = QTextDocument()
-    doc.setMarkdown(markdown)
+    doc.setMarkdown(_budget(markdown))
     return doc.toPlainText()
 
 
 def md_to_html(markdown: str) -> str:
     doc = QTextDocument()
-    doc.setMarkdown(markdown)
-    return doc.toHtml()
+    doc.setMarkdown(_budget(markdown))
+    html = doc.toHtml()
+    # A model answer may carry any link; only web links are worth opening.
+    return re.sub(r'href="(?!https?:|mailto:)[^"]*"', 'href="#"', html)
 
 
 class MicButton(QToolButton):
@@ -209,6 +223,9 @@ class BuddyWidget(QWidget):
 
         self.hint = QLabel(tr("hold_hint", key=ptt_key.replace(", ", "+")))
         self.hint.setObjectName("hint")
+        # A window title is somebody else's text: never let Qt read it as HTML.
+        self.hint.setTextFormat(Qt.PlainText)
+        self.hint.setTextInteractionFlags(Qt.NoTextInteraction)
         layout.addWidget(self.hint)
 
         # ---- pinned ----------------------------------------------------
@@ -256,7 +273,7 @@ class BuddyWidget(QWidget):
         self.mic.hold_started.connect(self.ptt_pressed.emit)
         self.mic.hold_finished.connect(self.ptt_released.emit)
         self.mic.clicked_short.connect(self.toggle_hands_free.emit)
-        self.input = QLineEdit()
+        self.input = BoundedLineEdit()
         self.input.setPlaceholderText(tr("type_placeholder", name=assistant_name))
         self.input.returnPressed.connect(self._submit)
         self.btn_send = self._tool("➤", tr("send"), self._submit)
@@ -459,8 +476,12 @@ class BuddyWidget(QWidget):
 
     def show_pin(self, title: str, markdown: str, kind: str = "note") -> None:
         icon = {"build": "🛠", "checklist": "☑", "table": "▦", "link": "🔗", "video": "▶"}.get(kind, "📌")
-        self.pin_title.setText(f"{icon} {title}")
-        self.pin_body.setMarkdown(markdown)
+        self.pin_title.setText(f"{icon} {_budget(title, 120)}")
+        rows = markdown.splitlines()
+        if len(rows) > PIN_LINES:
+            rows = rows[:PIN_LINES] + ["…"]
+        # Sanitised HTML, so a pinned answer cannot smuggle a non-web link in.
+        self.pin_body.setHtml(md_to_html(_budget("\n".join(rows), PIN_LIMIT)))
         self.pin_body.document().setTextWidth(self.pin_body.viewport().width() or self.width() - 60)
         self.pin_body.setFixedHeight(int(min(220, self.pin_body.document().size().height() + 12)))
         self.pin_body.setVisible(True)
@@ -479,16 +500,29 @@ class BuddyWidget(QWidget):
         label = QLabel()
         label.setObjectName(f"bubble_{kind}")
         label.setWordWrap(True)
-        label.setTextFormat(Qt.RichText)
-        label.setOpenExternalLinks(True)
-        label.setTextInteractionFlags(Qt.TextBrowserInteraction)
         label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
-        label.setText(md_to_html(text) if kind != "user" else text)
+        if kind == "bro":  # only the assistant's own words go through markdown
+            label.setTextFormat(Qt.RichText)
+            label.setOpenExternalLinks(True)
+            label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            label.setText(md_to_html(text))
+        else:  # typed text and error strings stay literal
+            label.setTextFormat(Qt.PlainText)
+            label.setTextInteractionFlags(Qt.NoTextInteraction)
+            label.setText(_budget(text))
         self.feed_layout.insertWidget(self.feed_layout.count() - 1, label)
+        self._trim_feed()
         QTimer.singleShot(0, self._scroll_bottom)
         if self._mode == "orb" and kind != "user":
             self.set_caption(_plain(text))
         return label
+
+    def _trim_feed(self) -> None:
+        """Drop the oldest bubbles: an hour of coaching must not grow forever."""
+        while self.feed_layout.count() - 1 > FEED_BUBBLES:
+            item = self.feed_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
     def add_user(self, text: str) -> None:
         self.add_bubble(text, "user")
@@ -511,7 +545,7 @@ class BuddyWidget(QWidget):
             self.begin_stream()
         self._streaming_text += delta
         assert self._streaming_label is not None
-        self._streaming_label.setText(md_to_html(self._streaming_text))
+        self._streaming_label.setText(md_to_html(self._streaming_text))  # capped by md_to_html
         self._scroll_bottom()
         if self._mode == "orb":
             self.set_caption(_plain(self._streaming_text), fade=False)

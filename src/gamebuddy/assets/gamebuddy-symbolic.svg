@@ -1,10 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
   <g fill="#deddda">
-    <circle cx="12" cy="1.5" r="1.25"/>
-    <path d="M11.2 2h1.6v4h-1.6z"/>
-    <path fill-rule="evenodd" d="M21 13a9 9 0 1 1-18 0 9 9 0 0 1 18 0z
-      M9.9 11.7a1.4 2.1 0 1 0-2.8 0 1.4 2.1 0 1 0 2.8 0z
-      M16.9 11.7a1.4 2.1 0 1 0-2.8 0 1.4 2.1 0 1 0 2.8 0z
-      M8.4 16.2Q12 20 15.6 16.2l-1.1-1Q12 17.8 9.5 15.2z"/>
+    <!-- headset: band, cups and the mic arm reaching the mouth -->
+    <path d="M3.3 11.6a8.7 8.7 0 0 1 17.4 0v1.3h-2.3v-1.3a6.4 6.4 0 0 0-12.8 0v1.3H3.3z"/>
+    <rect x="2.1" y="11.4" width="3.3" height="4.7" rx="1.65"/>
+    <rect x="18.6" y="11.4" width="3.3" height="4.7" rx="1.65"/>
+    <path d="M20.25 15.2q.7 3.4-3.5 3.6l.15-1.85q2.1 0 1.62-1.75z"/>
+    <circle cx="16.5" cy="18.35" r="1.15"/>
+    <!-- blob with the eyes and mouth punched through -->
+    <path fill-rule="evenodd" d="M12 4.9c4.9 0 8.6 3.5 8.6 8.1S16.9 21.1 12 21.1 3.4 17.5 3.4 13 7.1 4.9 12 4.9z
+      M9.7 11.3a1.45 2.15 0 1 0 0 4.3 1.45 2.15 0 1 0 0-4.3z
+      M14.3 11.3a1.45 2.15 0 1 0 0 4.3 1.45 2.15 0 1 0 0-4.3z
+      M9.1 17.5q2.9 2.3 5.8 0l-.85-.85q-2.05 1.55-4.1 0z"/>
   </g>
 </svg>

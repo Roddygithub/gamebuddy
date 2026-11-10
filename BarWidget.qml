@@ -15,6 +15,8 @@ Ui.BarWidget {
   property bool listening: false
   property bool opened: false
   property string model: ""
+  // Admission guard: a burst of clicks must not spawn a start per click.
+  property bool starting: false
   readonly property string controlScript: decodeURIComponent(Qt.resolvedUrl("plugin-control.sh").toString().replace(/^file:\/\//, ""))
 
   implicitWidth: button.implicitWidth
@@ -25,7 +27,12 @@ Ui.BarWidget {
     control.command = ["/bin/sh", root.controlScript].concat(args)
     control.running = true
   }
-  function start() { Quickshell.execDetached(["/bin/sh", root.controlScript, "start"]) }
+  function start() {
+    if (root.starting || root.running) return
+    root.starting = true
+    startGuard.restart()
+    Quickshell.execDetached(["/bin/sh", root.controlScript, "start"])
+  }
   function open() { if (running) run(["show"]); else start() }
   function close() { if (running) run(["hide"]) }
   function toggle() { if (running) run(["toggle"]); else start() }
@@ -44,17 +51,24 @@ Ui.BarWidget {
         try {
           const state = JSON.parse(text)
           root.running = !!state.ok
+          if (root.running) root.starting = false
           root.installed = state.installed !== false
           root.listening = !!(state.recording || state.hands_free)
           root.opened = !!state.visible
           root.model = state.model || ""
         } catch (error) {
           root.running = false
+          root.starting = false
           root.listening = false
           root.opened = false
         }
       }
     }
+  }
+  Timer {
+    id: startGuard
+    interval: 15000
+    onTriggered: root.starting = false
   }
   Timer {
     interval: 5000

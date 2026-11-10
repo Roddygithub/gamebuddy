@@ -6,17 +6,23 @@ import re
 from pathlib import Path
 
 DEFAULT = {
-    "bg": "#15171c",
-    "panel": "#1d2027",
-    "panel2": "#262a33",
-    "text": "#e8e9ed",
-    "muted": "#9aa0ad",
-    "accent": "#8b5cf6",
-    "accent2": "#22c55e",
+    "bg": "#1b1f27",
+    "panel": "#232833",
+    "panel2": "#2b313d",
+    "text": "#e9edf2",
+    "muted": "#98a0ae",
+    "accent": "#c6f24e",
+    "accent2": "#ff6b57",
     "danger": "#ef4444",
-    "user": "#2b2f3a",
-    "bro": "#2a2340",
+    "user": "#2b313d",
+    "bro": "#3b4433",
 }
+
+
+def ink_on(hex_color: str) -> str:
+    """Readable text over that fill: a bright accent needs dark ink, not white."""
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
+    return "#101418" if (0.299 * r + 0.587 * g + 0.114 * b) > 160 else "#ffffff"
 
 
 # `omarchy theme set` swaps this directory, so watching it follows the theme.
@@ -71,6 +77,7 @@ def omarchy_colors() -> dict[str, str]:
 
 def stylesheet(c: dict[str, str], font_size: int = 13, opacity: float = 0.94) -> str:
     alpha = int(max(0.3, min(1.0, opacity)) * 255)
+    ink = ink_on(c["accent"])
     bg = c["bg"].lstrip("#")
     r, g, b = int(bg[0:2], 16), int(bg[2:4], 16), int(bg[4:6], 16)
     return f"""
@@ -102,9 +109,9 @@ def stylesheet(c: dict[str, str], font_size: int = 13, opacity: float = 0.94) ->
     QToolButton {{ background: transparent; border: none; border-radius: 8px; padding: 4px 6px; color: {c["muted"]}; }}
     QToolButton:hover {{ background: rgba(255,255,255,0.08); color: {c["text"]}; }}
     QToolButton:checked {{ color: {c["accent"]}; background: rgba(255,255,255,0.08); }}
-    QToolButton#mic {{ background: {c["accent"]}; color: white; border-radius: 18px; padding: 6px; font-size: {font_size + 3}px; }}
-    QToolButton#mic:pressed, QToolButton#mic:checked {{ background: {c["danger"]}; }}
-    QPushButton {{ background: {c["accent"]}; color: white; border: none; border-radius: 8px; padding: 6px 12px; }}
+    QToolButton#mic {{ background: {c["accent"]}; color: {ink}; border-radius: 18px; padding: 6px; font-size: {font_size + 3}px; }}
+    QToolButton#mic:pressed, QToolButton#mic:checked {{ background: {c["danger"]}; color: white; }}
+    QPushButton {{ background: {c["accent"]}; color: {ink}; border: none; border-radius: 8px; padding: 6px 12px; }}
     QPushButton:hover {{ background: {c["accent"]}; }}
     QPushButton#secondary {{ background: {c["panel2"]}; color: {c["text"]}; }}
     QProgressBar {{ background: {c["panel2"]}; border: none; border-radius: 2px; height: 4px; }}
@@ -112,8 +119,8 @@ def stylesheet(c: dict[str, str], font_size: int = 13, opacity: float = 0.94) ->
     QComboBox, QSpinBox, QDoubleSpinBox {{ background: {c["panel2"]}; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px 8px; }}
     QListWidget {{ background: {c["panel"]}; border-radius: 8px; }}
     QListWidget::item {{ padding: 6px; }}
-    QListWidget::item:selected {{ background: {c["accent"]}; color: white; }}
+    QListWidget::item:selected {{ background: {c["accent"]}; color: {ink}; }}
     QDialog, QWizard {{ background: {c["bg"]}; }}
     QMenu {{ background: {c["panel"]}; border: 1px solid rgba(255,255,255,0.08); }}
-    QMenu::item:selected {{ background: {c["accent"]}; }}
+    QMenu::item:selected {{ background: {c["accent"]}; color: {ink}; }}
     """

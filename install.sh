@@ -106,15 +106,35 @@ fi
 
 # ---- virtualenv ------------------------------------------------------------
 mkdir -p "$PREFIX" "$BIN"
+# requirements.lock pins every production dependency with its hashes for the
+# supported target (Arch x86_64, Python $LOCK_PYTHON). Elsewhere we still
+# resolve from pyproject.toml and say so, rather than silently ignoring hashes.
+LOCK="$SRC_DIR/requirements.lock"
+LOCK_PYTHON=3.14
+python_version=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+use_lock=no
+if [ -f "$LOCK" ] && [ "$python_version" = "$LOCK_PYTHON" ]; then use_lock=yes; fi
 if command -v uv >/dev/null && uv --version >/dev/null 2>&1; then
   say "preparing venv with uv"
   if [ ! -x "$VENV/bin/python" ]; then uv venv --quiet "$VENV"; fi
-  uv pip install --quiet --python "$VENV/bin/python" "$SRC_DIR[local]"
+  if [ "$use_lock" = yes ]; then
+    uv pip install --quiet --python "$VENV/bin/python" --require-hashes -r "$LOCK"
+    uv pip install --quiet --python "$VENV/bin/python" --no-deps "$SRC_DIR"
+  else
+    warn "requirements.lock targets Python $LOCK_PYTHON; resolving from pyproject.toml"
+    uv pip install --quiet --python "$VENV/bin/python" "$SRC_DIR[local]"
+  fi
 else
   say "creating venv with python -m venv"
   python3 -m venv "$VENV"
-  "$VENV/bin/pip" install --quiet --upgrade pip
-  "$VENV/bin/pip" install --quiet "$SRC_DIR[local]"
+  if [ "$use_lock" = yes ]; then
+    "$VENV/bin/pip" install --quiet --require-hashes -r "$LOCK"
+    "$VENV/bin/pip" install --quiet --no-deps "$SRC_DIR"
+  else
+    warn "requirements.lock targets Python $LOCK_PYTHON; resolving from pyproject.toml"
+    "$VENV/bin/pip" install --quiet --upgrade pip
+    "$VENV/bin/pip" install --quiet "$SRC_DIR[local]"
+  fi
 fi
 ln -sf "$VENV/bin/gamebuddy" "$BIN/gamebuddy"
 case ":$PATH:" in *":$BIN:"*) ;; *) warn "add $BIN to your PATH";; esac

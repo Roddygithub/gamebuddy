@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0 — 2026-11-10
+
+- **Buddy has a face that says "talk to me"**: a rounded blob wearing a headset, with pill eyes that
+  blink and a mic that emits waves while you speak. Every colour comes from the active theme — body
+  on the accent, headset on the secondary colour, eyes on the background — so the mascot changes
+  with `omarchy theme set`, and the bar icon is redrawn to match in monochrome.
+- **Bounded rendering**: model markdown is capped per answer, its links restricted to the web, the
+  transcript keeps a bounded number of bubbles, and typed text and window titles are rendered as
+  plain text instead of rich text.
+- **Bounded helpers**: the bar's control script gives every engine call an absolute deadline and a
+  capped answer, repeated bar clicks can no longer start the widget twice, and hands-free audio is
+  admitted one utterance at a time instead of queueing threads.
+- **Hash-pinned dependencies**: `requirements.lock` pins the production set with SHA-256 hashes for
+  the supported target, and `install.sh` installs it with `--require-hashes`.
+- **Bounded paste**: text fields truncate a paste instead of ingesting the whole clipboard.
+
 ## 0.5.0 — 2026-11-10
 
 - **The overlay follows the Omarchy theme**: Buddy now reads the active theme's `colors.toml`

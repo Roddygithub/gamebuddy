@@ -22,6 +22,7 @@ from gamebuddy.capture import CaptureBackend, WindowInfo
 from gamebuddy.config import Config, save_config
 from gamebuddy.i18n import SUPPORTED_LANGUAGES, Translator, language_display_name
 from gamebuddy.speech.stt import voxtype_available
+from gamebuddy.ui.inputs import BoundedLineEdit
 from gamebuddy.ui.settings import PROVIDERS
 
 DEFAULT_MODELS = {
@@ -63,7 +64,7 @@ class OnboardingWizard(QWizard):
         for code in SUPPORTED_LANGUAGES:
             self.language.addItem(language_display_name(code), code)
         self.language.setCurrentIndex(max(0, self.language.findData(self.cfg.general.language)))
-        self.name = QLineEdit(self.cfg.general.assistant_name)
+        self.name = BoundedLineEdit(self.cfg.general.assistant_name)
         layout.addRow(self.tr("onboarding_lang"), self.language)
         layout.addRow("Name", self.name)
         return page
@@ -75,12 +76,12 @@ class OnboardingWizard(QWizard):
         self.provider = QComboBox()
         self.provider.addItems(PROVIDERS)
         self.provider.setCurrentText(self.cfg.llm.provider)
-        self.model = QLineEdit(self.cfg.llm.model)
-        self.base_url = QLineEdit(self.cfg.llm.base_url)
-        self.api_key = QLineEdit(self.cfg.llm.api_key)
+        self.model = BoundedLineEdit(self.cfg.llm.model)
+        self.base_url = BoundedLineEdit(self.cfg.llm.base_url)
+        self.api_key = BoundedLineEdit(self.cfg.llm.api_key)
         self.api_key.setEchoMode(QLineEdit.Password)
         self.api_key.setPlaceholderText("not needed for codex (ChatGPT Plus) or ollama")
-        self.openai_key = QLineEdit()
+        self.openai_key = BoundedLineEdit()
         self.openai_key.setEchoMode(QLineEdit.Password)
         self.openai_key.setPlaceholderText("optional — for OpenAI voice (STT/TTS)")
         self.provider.currentTextChanged.connect(lambda p: self.model.setText(DEFAULT_MODELS.get(p, "")))

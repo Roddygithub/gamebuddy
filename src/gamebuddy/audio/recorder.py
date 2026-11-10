@@ -145,6 +145,10 @@ class HandsFreeListener:
         self.idle_sleep_s = idle_sleep_s
         self.on_level = on_level
         self.on_sleep = on_sleep
+        # One utterance at a time: Kin answers one question at a time anyway, so
+        # queueing more would only pile up threads and stale audio.
+        self._slot = threading.Semaphore(1)
+        self.dropped = 0
         self._stream = None
         self._buf: list[np.ndarray] = []
         self._in_speech = False
@@ -188,6 +192,12 @@ class HandsFreeListener:
             self._buf = []
             self._in_speech = False
 
+    def _deliver(self, wav: bytes) -> None:
+        try:
+            self.on_utterance(wav)
+        finally:
+            self._slot.release()
+
     def _callback(self, indata, _frames, _time, _status):  # noqa: ANN001
         mono = indata[:, 0].copy()
         level = rms(mono)
@@ -213,9 +223,11 @@ class HandsFreeListener:
                 self._buf = []
                 self._in_speech = False
                 if audio.size >= self.sample_rate * 0.4:
-                    threading.Thread(
-                        target=self.on_utterance, args=(pcm_to_wav(audio, self.sample_rate),), daemon=True
-                    ).start()
+                    wav = pcm_to_wav(audio, self.sample_rate)
+                    if self._slot.acquire(blocking=False):
+                        threading.Thread(target=self._deliver, args=(wav,), daemon=True).start()
+                    else:
+                        self.dropped += 1  # answered late is worse than not at all
         elif self.idle_sleep_s and now - self._last_activity > self.idle_sleep_s:
             self._last_activity = now
             if self.on_sleep:

@@ -9,21 +9,29 @@ CONTROL = Path(__file__).parents[1] / "plugin-control.sh"
 def test_plugin_missing_engine_and_running_engine(tmp_path):
     bindir = tmp_path / "bin"
     bindir.mkdir()
-    env = {**os.environ, "HOME": str(tmp_path), "PATH": str(bindir)}
+    # The script shells out to coreutils (timeout, head) like a real session does.
+    env = {**os.environ, "HOME": str(tmp_path), "PATH": f"{bindir}:/usr/bin:/bin"}
 
     def run(*args):
         return subprocess.run(["/bin/sh", str(CONTROL), *args], env=env, capture_output=True, text=True)
 
     assert json.loads(run("status").stdout) == {"ok": False, "installed": False}
     assert run("start").returncode == 127
+    log = tmp_path / "calls.log"
     engine = bindir / "gamebuddy"
     engine.write_text(
-        '#!/bin/sh\nif [ "$1" = status ]; then printf \'{"ok":true,"model":"demo"}\\n\'; else printf "%s\\n" "$*"; fi\n'
+        "#!/bin/sh\n"
+        f'printf "%s\\n" "$*" >> {log}\n'
+        'if [ "$1" = status ]; then printf \'{"ok":true,"model":"demo"}\\n\'; fi\n'
     )
     engine.chmod(0o755)
     assert json.loads(run("status").stdout)["model"] == "demo"
-    assert run("start").stdout.strip() == "show"
-    assert run("ai-settings").stdout.strip() == "ai-settings"
+    # The bar never parses these answers, so the script drops them and only runs them.
+    assert run("start").returncode == 0
+    assert run("ai-settings").returncode == 0
+    calls = log.read_text().splitlines()
+    assert "show" in calls
+    assert "ai-settings" in calls
     assert run("unsupported").returncode == 2
 
 

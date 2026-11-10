@@ -725,6 +725,7 @@ class GameBuddyApp(QObject):
             "window_id": self.window.id if self.window else "",
             "recording": bool(self.recorder and self.recorder.recording),
             "hands_free": bool(self.listener and self.listener.active),
+            "dropped_utterances": self.listener.dropped if self.listener else 0,
             "coach": bool(self.coach and self.coach.running),
             "busy": self.kin.busy,
             "backend": self.backend.name,
