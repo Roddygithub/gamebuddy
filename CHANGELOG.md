@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1 — 2026-11-10
 
 - **The selected game window survives a restart**: GameBuddy remembers the window you chose and
   re-selects it on the next start when a window with the same application and title is open, or

@@ -388,7 +388,7 @@ compositor behaviour need a desktop session.
 
 ## Status
 
-Current version: **0.4.0**. The Omarchy marketplace submission passed structural and Quattro validation, and a maintainer approved revision `b73930d` after capability review; this release is submitted as the next published revision. The engine requires manual setup. Track the current [submission and listing status](https://github.com/omacom/omarchy-plugin-marketplace/issues/14633).
+Current version: **0.4.1**. The Omarchy marketplace submission passed structural and Quattro validation, and a maintainer approved revision `b73930d` after capability review; this release is submitted as the next published revision. The engine requires manual setup. Track the current [submission and listing status](https://github.com/omacom/omarchy-plugin-marketplace/issues/14633).
 
 Known limits:
 

@@ -2,7 +2,7 @@
 # AUR-style recipe. Runtime Python deps not in [extra] (ddgs) are vendored via pip at build time
 # by install.sh instead; this PKGBUILD documents the system dependencies.
 pkgname=gamebuddy-git
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc="Voice-first AI gaming companion for Linux (Wayland/Hyprland/Omarchy)"
 arch=('any')
@@ -19,7 +19,7 @@ makedepends=('git' 'python-build' 'python-installer' 'python-setuptools' 'python
 source=("git+$url.git")
 sha256sums=('SKIP')
 
-pkgver() { cd gamebuddy && git describe --tags --long 2>/dev/null | sed 's/^v//;s/-/.r/;s/-/./' || echo 0.4.0.r0; }
+pkgver() { cd gamebuddy && git describe --tags --long 2>/dev/null | sed 's/^v//;s/-/.r/;s/-/./' || echo 0.4.1.r0; }
 
 build() {
   cd gamebuddy
