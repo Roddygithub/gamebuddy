@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <g transform="translate(12,12) scale(1.1) translate(-12,-12)">
   <g fill="#deddda">
     <circle cx="12" cy="1.5" r="1.25"/>
     <path d="M11.2 2h1.6v4h-1.6z"/>
@@ -6,5 +7,6 @@
       M9.9 11.7a1.4 2.1 0 1 0-2.8 0 1.4 2.1 0 1 0 2.8 0z
       M16.9 11.7a1.4 2.1 0 1 0-2.8 0 1.4 2.1 0 1 0 2.8 0z
       M8.4 16.2Q12 20 15.6 16.2l-1.1-1Q12 17.8 9.5 15.2z"/>
+  </g>
   </g>
 </svg>
