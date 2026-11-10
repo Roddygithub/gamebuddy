@@ -1,4 +1,8 @@
-"""Coach mode: periodic observation → change filter → structured state → gate → short advice.
+"""Coach mode: periodic observation → change filter → structured state → gate → stability → advice.
+
+A passing observation is only a candidate: it is delivered once the next capture
+shows the same screen, so advice describes a decision window that persisted rather
+than a transient frame.
 
 Off by default. Designed to stay silent unless a long-lived decision window is
 clearly visible and the structured state passes every grounding check.
@@ -47,8 +51,18 @@ class CoachPipeline:
         self._last_hash: int | None = None
         self._last_advice = ""
         self._last_advice_at = 0.0
+        self._pending: Observation | None = None
+        self._pending_at = 0.0
+        self._pending_ttl_s = max(3 * cfg.coach.interval_s, 15.0)
         self.paused = False
-        self.metrics = {"frames": 0, "candidates": 0, "reasoner_calls": 0, "advised": 0, "rejected": 0}
+        self.metrics = {
+            "frames": 0,
+            "candidates": 0,
+            "reasoner_calls": 0,
+            "pending": 0,
+            "advised": 0,
+            "rejected": 0,
+        }
 
     # ---- lifecycle -------------------------------------------------------
     @property
@@ -83,7 +97,13 @@ class CoachPipeline:
         self.metrics["frames"] += 1
         h = dhash(frame)
         if self._last_hash is not None and hash_distance(h, self._last_hash) < self.cfg.coach.min_change:
-            return None
+            # The screen did not move since the candidate sighting, so the decision
+            # window outlived a full interval: its advice is safe to deliver.
+            pending, self._pending = self._pending, None
+            if pending is None or time.time() - self._pending_at > self._pending_ttl_s:
+                return None
+            self._deliver(pending)
+            return pending
         self._last_hash = h
         self.metrics["candidates"] += 1
         if time.time() - self._last_advice_at < self.cfg.coach.cooldown_s:
@@ -114,10 +134,20 @@ class CoachPipeline:
             "gate", "accepted" if accepted else reason, obs.advice or obs.rationale, self.game_title
         )
         if not accepted:
+            self._pending = None
             self.metrics["rejected"] += 1
             return obs
+        # Hold the advice until the next frame confirms the window persisted: a HUD
+        # flash or a transient tooltip never reaches the player.
+        self._pending = obs
+        self._pending_at = time.time()
+        self.metrics["pending"] += 1
+        self.store.log_coach("pre_gate", "await_stability", obs.advice, self.game_title)
+        return obs
+
+    def _deliver(self, obs: Observation) -> None:
         self.metrics["advised"] += 1
         self._last_advice = obs.advice
         self._last_advice_at = time.time()
+        self.store.log_coach("pre_gate", "delivered", obs.advice, self.game_title)
         self.on_advice(obs)
-        return obs

@@ -21,11 +21,14 @@ capture (JPEG of the game window)
       at least one evidence item; no critical unknown field (owner, hp, gold, cost, cooldown, timer…)
       advice must name a specific option from the structured state (not just "buy")
       not ≥ 60 % similar to the previous advice
+  → stability confirmation       (the advice is held for one interval and delivered only when the
+                                  next capture shows the same screen, so a HUD flash never lands)
   → one line in the widget (optionally spoken)
 ```
 
 Every stage writes to the `coach_log` table (`gamebuddy.db`): `pre_gate:cooldown`,
-`parse:error`, `gate:accepted`, `gate:<reason>`. `Store.coach_stats()` aggregates them, so the
+`pre_gate:await_stability`, `pre_gate:delivered`, `parse:error`, `gate:accepted`,
+`gate:<reason>`. `Store.coach_stats()` aggregates them, so the
 ratio of reasoner calls to accepted advice can be audited per game.
 
 ## Intended first use cases
@@ -35,8 +38,9 @@ preparation phases, between-round decisions, post-event micro-debriefs. Not fast
 
 ## Known gaps
 
-- Perception is one model call on one frame; multi-frame stabilisation and OCR are not
-  implemented.
+- Perception is one model call on one frame, confirmed by an unchanged frame before the advice
+  is spoken (a candidate that expires is dropped). OCR is not implemented, so typed numbers are
+  read from pixels like everything else.
 - The gate validates structure and grounding, not game correctness. Treat advice as a prompt
   for your own judgement.
 - Player-learning / adaptive suppression is limited to the long-term notes Buddy keeps

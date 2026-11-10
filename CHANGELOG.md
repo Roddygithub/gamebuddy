@@ -6,6 +6,10 @@
   re-selects it on the next start when a window with the same application and title is open, or
   when that application has a single window. Ambiguous matches are left unselected rather than
   guessing, so a browser or a terminal is never captured by mistake.
+- **Coach advice is confirmed before it is spoken**: a passing observation is now only a
+  candidate, delivered once the next capture shows the same screen. A HUD flash or a transient
+  tooltip no longer produces advice, at the cost of one interval of latency and no extra model
+  call. `coach_log` records `pre_gate:await_stability` and `pre_gate:delivered`.
 
 ## 0.4.0 — 2026-11-10
 
