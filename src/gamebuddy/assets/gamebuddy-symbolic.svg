@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
   <g fill="#deddda">
     <!-- head with eye holes punched through -->
-    <path fill-rule="evenodd" d="M12 4a8.5 8.5 0 1 0 0 17 8.5 8.5 0 1 0 0-17z
-      M8.5 11.5a2 2 0 1 0 0 4 2 2 0 1 0 0-4z
-      M15.5 11.5a2 2 0 1 0 0 4 2 2 0 1 0 0-4z"/>
-    <!-- headset band -->
-    <path d="M3.5 10.5a8.5 8.5 0 0 1 17 0" fill="none" stroke="#deddda" stroke-width="2.4" stroke-linecap="round"/>
+    <path fill-rule="evenodd" d="M12 7a7 7 0 1 0 0 14 7 7 0 1 0 0-14z
+      M8.5 13.5a2 2 0 1 0 0 4 2 2 0 1 0 0-4z
+      M15.5 13.5a2 2 0 1 0 0 4 2 2 0 1 0 0-4z"/>
+    <!-- headset band, lifted above the head -->
+    <path d="M3.5 9a8.5 8.5 0 0 1 17 0" fill="none" stroke="#deddda" stroke-width="2.4" stroke-linecap="round"/>
     <!-- cups -->
-    <rect x="1.5" y="9" width="4.2" height="6.5" rx="2.1"/>
-    <rect x="18.3" y="9" width="4.2" height="6.5" rx="2.1"/>
+    <rect x="1.5" y="7.5" width="4.2" height="6.5" rx="2.1"/>
+    <rect x="18.3" y="7.5" width="4.2" height="6.5" rx="2.1"/>
   </g>
 </svg>
