@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 — 2026-11-10
+
+- **Tray icon now follows updates**: install/update refreshes the hicolor icon cache and
+  restarts the Omarchy bar, so the system-tray icon no longer keeps a stale pixmap after an
+  update.
+
 ## 0.6.0 — 2026-11-10
 
 - **Buddy has a face that says "talk to me"**: a rounded blob wearing a headset, with pill eyes that

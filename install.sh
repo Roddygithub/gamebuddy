@@ -143,6 +143,10 @@ case ":$PATH:" in *":$BIN:"*) ;; *) warn "add $BIN to your PATH";; esac
 APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 mkdir -p "$APPS" "$HOME/.config/systemd/user"
 install -Dm644 "$SRC_DIR/src/gamebuddy/assets/gamebuddy-symbolic.svg" "$TRAY_ICON"
+# Refresh the icon theme cache so hosts (quickshell/waybar) pick up the new
+# symbolic icon instead of a stale cached pixmap, then restart the bar.
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -f -t "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor" >/dev/null 2>&1 || true
+command -v omarchy-restart-shell >/dev/null && omarchy-restart-shell >/dev/null 2>&1 || true
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy.desktop" > "$APPS/gamebuddy.desktop"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy.service" > "$HOME/.config/systemd/user/gamebuddy.service"
 sed "s|@BIN@|$VENV/bin/gamebuddy|g" "$SRC_DIR/packaging/gamebuddy-update.service" > "$HOME/.config/systemd/user/gamebuddy-update.service"
