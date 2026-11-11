@@ -189,7 +189,7 @@ Web search remains available when needed.
 - **Continuous conversation** — the thread persists across restarts; long-term notes live in a local SQLite database.
 - **Pinned content** — builds, checklists, tables, links or video URLs stay visible until you replace or remove them.
 - **Spoken replies** — OpenAI TTS, [piper](https://github.com/rhasspy/piper) or espeak-ng; speech-to-text through OpenAI, [voxtype](https://github.com/peteonrails/voxtype) (Omarchy's dictation tool, GPU builds), faster-whisper (offline) or whisper.cpp.
-- **Coach mode (opt-in, experimental)** — periodic observation with a cautious grounding gate; silent unless a long-lived decision window is clearly visible. See [docs/COACH-MODE.md](docs/COACH-MODE.md).
+- **Coach mode (opt-in, experimental)** — periodic observation with a cautious grounding gate; silent unless a long-lived decision window is clearly visible. Measure it on annotated captures with `gamebuddy eval` — see [docs/COACH-MODE.md](docs/COACH-MODE.md) and [evals/coach](evals/coach/README.md).
 - **Multilingual** — UI in French, English, German, Spanish, Italian, Brazilian and European Portuguese; Buddy answers in whatever language you speak.
 - **Providers** — a ChatGPT Plus/Pro subscription (via the Codex CLI, no API key), Anthropic Claude, OpenAI, Ollama, or any OpenAI-compatible endpoint (LM Studio, OpenRouter, Mistral…).
 - **Scriptable** — a Unix-socket IPC and a CLI (`gamebuddy ptt start`, `gamebuddy ask "…"`, `gamebuddy toggle`), which is how Hyprland keybinds and the Omarchy bar widget drive it.
@@ -360,6 +360,7 @@ GNOME, KDE and X11 users bind the same commands with their desktop's shortcut se
 | `gamebuddy toggle` / `show` / `hide` | widget visibility |
 | `gamebuddy listen on\|off` | hands-free listening |
 | `gamebuddy coach on\|off` | coach mode |
+| `gamebuddy eval evals/coach` | measure the coach on annotated captures |
 | `gamebuddy select-window [id]` | choose the game window (`gamebuddy windows` lists ids) |
 | `gamebuddy capture --out shot.jpg` | debug a capture |
 | `gamebuddy doctor` | check tools, microphone, keys, Hyprland version |
@@ -368,7 +369,7 @@ GNOME, KDE and X11 users bind the same commands with their desktop's shortcut se
 
 ## Privacy
 
-- Screenshots are taken only when you ask (or when coach mode is on) and are sent only to the provider you configured. Nothing is written to disk except the conversation text and your notes in `~/.local/share/gamebuddy/gamebuddy.db`. The data directory is restricted to your account (mode `700`); the database and SQLite sidecars are mode `600`.
+- Screenshots are taken only when you ask (or when coach mode is on) and are sent only to the provider you configured. Nothing is written to disk except the conversation text and your notes in `~/.local/share/gamebuddy/gamebuddy.db` (plus coach candidate frames when you enable `coach.save_frames`, kept in the same private directory). The data directory is restricted to your account (mode `700`); the database and SQLite sidecars are mode `600`.
 - Web-page fetching is limited to public IP addresses and checks each redirect. Local eSpeak receives reply text through stdin rather than process arguments.
 - With the Codex provider, Buddy uses the saved ChatGPT login but ignores the rest of the Codex user configuration and disables its shell, local-image, web-search and connected-app tools. Only the selected game capture is attached.
 - API keys stay in `config.toml` (mode 600) or in your environment.

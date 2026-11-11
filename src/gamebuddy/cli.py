@@ -300,6 +300,15 @@ def main(argv: list[str] | None = None) -> int:
     cfgp.add_argument("action", choices=["path", "show", "init", "edit"], nargs="?", default="path")
     mem = sub.add_parser("memory", help="long-term memory")
     mem.add_argument("action", choices=["list", "forget"], nargs="?", default="list")
+    ev = sub.add_parser("eval", help="measure the coach on annotated captures (see evals/coach/README.md)")
+    ev.add_argument("dataset", help="directory of annotated cases, e.g. evals/coach")
+    ev.add_argument("--repeat", type=int, default=1, help="runs per case, for pass@k / pass^k")
+    ev.add_argument("--model", default="", help="reasoner model override (default: coach model)")
+    ev.add_argument("--language", default="en", help="advice language for the reasoner prompt")
+    ev.add_argument("--out", default="", help="where to write the JSON report (default: <dataset>/results/)")
+    ev.add_argument(
+        "--replay", default="", metavar="REPORT", help="re-grade a previous report's answers instead of calling the model"
+    )
     args = p.parse_args(argv)
 
     cmd = args.cmd or "run"
@@ -420,5 +429,9 @@ def main(argv: list[str] | None = None) -> int:
             for note in store.memories(limit=200):
                 print(f"- {note}")
         return 0
+    if cmd == "eval":
+        from gamebuddy.eval.run import run_eval_cli
+
+        return run_eval_cli(args)
     p.print_help()
     return 0

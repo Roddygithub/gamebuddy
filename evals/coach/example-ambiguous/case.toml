@@ -1,0 +1,10 @@
+# Synthetic example: an abstract, unreadable frame. The coach must stay silent
+# (ABSTAIN or NEED_MORE_EVIDENCE) instead of inventing a decision window.
+[case]
+game = ""
+description = "Abstract blobs with no readable state; silence is the only correct answer."
+synthetic = true
+
+[expected]
+decision = "ABSTAIN"
+latency_budget_s = 45.0

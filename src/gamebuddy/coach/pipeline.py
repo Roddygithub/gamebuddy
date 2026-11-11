@@ -11,6 +11,7 @@ clearly visible and the structured state passes every grounding check.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -23,6 +24,18 @@ from gamebuddy.memory import Store
 from gamebuddy.prompts import COACH_SYSTEM
 
 log = logging.getLogger(__name__)
+
+# When coach.save_frames is on, keep at most this many candidate frames per game
+# so the directory stays bounded even across long sessions.
+MAX_SAVED_FRAMES = 200
+
+
+def observe_message(frame: bytes, game_title: str = "") -> Message:
+    """The single perception call used by both the live coach and the eval harness."""
+    prompt = "Observe this frame and return the JSON object."
+    if game_title:
+        prompt = f"Game window title: {game_title}. " + prompt
+    return Message(role="user", content=prompt, images=[image_part(frame, "image/jpeg")])
 
 
 class CoachPipeline:
@@ -54,6 +67,7 @@ class CoachPipeline:
         self._pending: Observation | None = None
         self._pending_at = 0.0
         self._pending_ttl_s = max(3 * cfg.coach.interval_s, 15.0)
+        self._saved_count = 0
         self.paused = False
         self.metrics = {
             "frames": 0,
@@ -106,6 +120,8 @@ class CoachPipeline:
             return pending
         self._last_hash = h
         self.metrics["candidates"] += 1
+        if self.cfg.coach.save_frames:
+            self._save_frame(frame)
         if time.time() - self._last_advice_at < self.cfg.coach.cooldown_s:
             self.store.log_coach("pre_gate", "cooldown", "", self.game_title)
             return None
@@ -116,10 +132,7 @@ class CoachPipeline:
             self._provider = self.provider_factory()
         self.metrics["reasoner_calls"] += 1
         system = COACH_SYSTEM.replace("{language}", self.language)
-        prompt = "Observe this frame and return the JSON object."
-        if self.game_title:
-            prompt = f"Game window title: {self.game_title}. " + prompt
-        msg = Message(role="user", content=prompt, images=[image_part(frame, "image/jpeg")])
+        msg = observe_message(frame, self.game_title)
         turn = self._provider.chat(system=system, messages=[msg], max_tokens=900, json_mode=True)
         try:
             obs = parse_observation(turn.text)
@@ -151,3 +164,17 @@ class CoachPipeline:
         self._last_advice_at = time.time()
         self.store.log_coach("pre_gate", "delivered", obs.advice, self.game_title)
         self.on_advice(obs)
+
+    def _save_frame(self, frame: bytes) -> None:
+        """Persist candidate frames so real sessions can be annotated into eval cases."""
+        from gamebuddy.paths import coach_frames_dir
+
+        slug = re.sub(r"\W+", "-", self.game_title or "unknown").strip("-").lower()[:40] or "unknown"
+        directory = coach_frames_dir() / slug
+        directory.mkdir(parents=True, exist_ok=True)
+        self._saved_count += 1
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        (directory / f"{stamp}-{self._saved_count:04d}.jpg").write_bytes(frame)
+        keep = sorted(directory.glob("*.jpg"))
+        for old in keep[: max(0, len(keep) - MAX_SAVED_FRAMES)]:
+            old.unlink(missing_ok=True)

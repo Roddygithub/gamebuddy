@@ -45,3 +45,20 @@ preparation phases, between-round decisions, post-event micro-debriefs. Not fast
   for your own judgement.
 - Player-learning / adaptive suppression is limited to the long-term notes Buddy keeps
   (`remember`). Tracking mastery per mechanic is future work.
+
+## Evaluating the coach
+
+`gamebuddy eval evals/coach` runs the annotated eval dataset: each case is one
+frame plus a `case.toml` annotation, graded on four measures — perception,
+grounding, latency, and the decision to stay silent — with pass@k / pass^k
+reliability metrics. `--replay` re-grades a previous report without calling the
+model, so prompt or gate changes can be regression-checked for free. The case
+format and the dataset workflow live in
+[evals/coach/README.md](../evals/coach/README.md).
+
+Set `coach.save_frames = true` to keep every candidate frame under
+`~/.local/share/gamebuddy/coach_frames/<game>/` (last 200 per game), then
+annotate the interesting ones to grow the dataset from real sessions. Run the
+evals before and after every change to the coach prompt or the gate: a green
+unit-test suite alone says nothing about whether Buddy reads your bench
+correctly.

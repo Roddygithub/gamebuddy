@@ -10,3 +10,4 @@ build/
 *.wav
 *.log
 config.local.toml
+evals/**/results/
