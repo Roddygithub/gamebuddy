@@ -65,9 +65,7 @@ def check_perception(case: CoachCase, obs: Observation) -> list[str]:
     return notes
 
 
-def check_grounding(
-    case: CoachCase, obs: Observation, accepted: bool, reject_reason: str
-) -> list[str]:
+def check_grounding(case: CoachCase, obs: Observation, accepted: bool, reject_reason: str) -> list[str]:
     if not accepted:
         # Silence on a withheld case is exactly right; rejecting advice the case
         # says should be delivered means the gate (or the model) got it wrong.
@@ -137,7 +135,9 @@ def grade_observation(
     grounding_fail = check_grounding(case, obs, accepted, reject_reason)
     decision_fail = check_decision(case, obs)
     latency_fail = (
-        [] if latency_s <= case.latency_budget_s else [f"latency {latency_s:.1f}s > {case.latency_budget_s:g}s budget"]
+        []
+        if latency_s <= case.latency_budget_s
+        else [f"latency {latency_s:.1f}s > {case.latency_budget_s:g}s budget"]
     )
     return RunRecord(
         decision=obs.decision,

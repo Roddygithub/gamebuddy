@@ -72,9 +72,7 @@ def _reobserve(case: CoachCase, recorded: dict, cfg: Config) -> RunRecord:
         accepted, reason = False, "parse_error"
     else:
         accepted, reason = validate(obs, cfg.coach.min_confidence)
-    record = grade_observation(
-        case, obs, accepted=accepted, reject_reason=reason, latency_s=latency, raw=raw
-    )
+    record = grade_observation(case, obs, accepted=accepted, reject_reason=reason, latency_s=latency, raw=raw)
     record.notes.append("replayed")
     return record
 
@@ -115,7 +113,13 @@ def _build_report(
             if applicable:
                 per_case.append((applicable[0], any(applicable), all(applicable), len(applicable)))
         if not per_case:
-            return {"applicable_cases": 0, "applicable_runs": 0, "pass_1": 0.0, "pass_at_k": 0.0, "pass_hat_k": 0.0}
+            return {
+                "applicable_cases": 0,
+                "applicable_runs": 0,
+                "pass_1": 0.0,
+                "pass_at_k": 0.0,
+                "pass_hat_k": 0.0,
+            }
         n = len(per_case)
         return {
             "applicable_cases": n,
@@ -228,14 +232,16 @@ def _finish(dataset: Path, report: dict, out: Path | None, log) -> tuple[dict, i
 def _print_summary(report: dict, out: Path, log) -> None:
     summary = report["summary"]
     per_case = summary["runs"] // max(1, summary["cases"])
-    meta = f"{report.get('mode', 'live')} · {report.get('provider', '')} {report.get('model', '')}".strip(" ·")
-    log(
-        f"Coach eval: {report['dataset']} — {summary['cases']} case(s) × {per_case} run(s) ({meta})"
+    meta = f"{report.get('mode', 'live')} · {report.get('provider', '')} {report.get('model', '')}".strip(
+        " ·"
     )
+    log(f"Coach eval: {report['dataset']} — {summary['cases']} case(s) × {per_case} run(s) ({meta})")
     for case in report["cases"]:
         last = case["runs"][-1]
         state = "PASS" if case["pass_hat_k"] else "FAIL"
-        outcome = f"delivered: {last['advice'][:60]}" if last["accepted"] else f"gate: {last['reject_reason']}"
+        outcome = (
+            f"delivered: {last['advice'][:60]}" if last["accepted"] else f"gate: {last['reject_reason']}"
+        )
         notes = f" — {'; '.join(last['notes'])}" if last["notes"] else ""
         log(
             f"  {case['name']:<32} {state}  {last['latency_s']:5.1f}s  {last['decision']:<6} {outcome}{notes}"
@@ -243,9 +249,9 @@ def _print_summary(report: dict, out: Path, log) -> None:
     parts = [f"pass@1 {_pct(summary['pass_1'])}"]
     for key, value in summary.items():
         if key.startswith("pass_at_") and key != "pass_at_1":
-            parts.append(f"pass@{key[len('pass_at_'):]} {_pct(value)}")
+            parts.append(f"pass@{key[len('pass_at_') :]} {_pct(value)}")
         elif key.startswith("pass_hat_") and key != "pass_hat_1":
-            parts.append(f"pass^{key[len('pass_hat_'):]} {_pct(value)}")
+            parts.append(f"pass^{key[len('pass_hat_') :]} {_pct(value)}")
     measures = " · ".join(
         f"{name} {_pct(m['pass_1'])} of {m['applicable_runs']} runs"
         for name, m in summary["measures"].items()

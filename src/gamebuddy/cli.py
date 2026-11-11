@@ -307,7 +307,10 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--language", default="en", help="advice language for the reasoner prompt")
     ev.add_argument("--out", default="", help="where to write the JSON report (default: <dataset>/results/)")
     ev.add_argument(
-        "--replay", default="", metavar="REPORT", help="re-grade a previous report's answers instead of calling the model"
+        "--replay",
+        default="",
+        metavar="REPORT",
+        help="re-grade a previous report's answers instead of calling the model",
     )
     args = p.parse_args(argv)
 

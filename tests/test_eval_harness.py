@@ -165,9 +165,7 @@ def test_state_text_covers_structured_state():
 
 def test_perception_reports_missing_facts(tmp_path):
     case = load_case(_write_case(tmp_path, "c", TOML_ADVISE.replace('"Slark"]', '"Slark", "Tidehunter"]')))
-    notes = grade_observation(
-        case, _obs(SHOP), accepted=True, reject_reason="ok", latency_s=1.0
-    )
+    notes = grade_observation(case, _obs(SHOP), accepted=True, reject_reason="ok", latency_s=1.0)
     assert any("entity not read: Tidehunter" in n for n in notes.notes)
     assert notes.measures["perception"] is False
 
@@ -199,7 +197,9 @@ def test_silence_case_fails_when_advice_is_delivered(tmp_path):
 
 def test_latency_and_perception_na(tmp_path):
     silent_case = load_case(_write_case(tmp_path, "silent", TOML_SILENT))
-    record = grade_observation(case=silent_case, obs=_obs(SILENT), accepted=False, reject_reason="abstain", latency_s=99.0)
+    record = grade_observation(
+        case=silent_case, obs=_obs(SILENT), accepted=False, reject_reason="abstain", latency_s=99.0
+    )
     assert record.measures["latency"] is False
     assert record.measures["perception"] is None  # no annotations: not applicable
     assert not record.passed
@@ -315,7 +315,11 @@ def test_provider_errors_become_failed_runs_not_crashes(tmp_path):
             raise RuntimeError("quota exhausted")
 
     report, code = run_dataset(
-        dataset, Config(), provider_factory=lambda: _DeadProvider(), out=tmp_path / "r.json", log=lambda *a: None
+        dataset,
+        Config(),
+        provider_factory=lambda: _DeadProvider(),
+        out=tmp_path / "r.json",
+        log=lambda *a: None,
     )
     assert code == 1
     run = report["cases"][0]["runs"][0]
@@ -337,12 +341,26 @@ def test_eval_cli_replay_exit_codes(tmp_path, monkeypatch):
         out=tmp_path / "live.json",
         log=lambda *a: None,
     )
-    assert main(["eval", str(dataset), "--replay", str(tmp_path / "live.json"), "--out", str(tmp_path / "re.json")]) == 0
+    assert (
+        main(
+            [
+                "eval",
+                str(dataset),
+                "--replay",
+                str(tmp_path / "live.json"),
+                "--out",
+                str(tmp_path / "re.json"),
+            ]
+        )
+        == 0
+    )
     assert main(["eval", str(tmp_path / "nowhere")]) == 2
 
 
 # ---- candidate frames feed the dataset --------------------------------------
-def _pipeline(tmp_path, monkeypatch, cfg: Config, frames: list[bytes], by_frame: dict[bytes, dict] | None = None):
+def _pipeline(
+    tmp_path, monkeypatch, cfg: Config, frames: list[bytes], by_frame: dict[bytes, dict] | None = None
+):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
     advice: list = []
     pipeline = CoachPipeline(
