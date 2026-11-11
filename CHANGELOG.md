@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 — 2026-11-11
+
+- **Coach evals**: `gamebuddy eval <dataset>` measures the coach on annotated
+  captures — perception, grounding, latency and the decision to stay silent —
+  with pass@k / pass^k reliability metrics. Reports keep the raw reasoner
+  answers and `--replay` re-grades them without a model call, so prompt and
+  gate changes can be regression-checked for free. Two synthetic example cases
+  ship under `evals/coach/`.
+- **`coach.save_frames`**: opt-in; keeps every candidate frame under
+  `~/.local/share/gamebuddy/coach_frames/<game>/` (last 200 per game, private
+  data directory) so real sessions can be annotated into eval cases.
+
 ## 0.6.2 — 2026-11-10
 
 - **Larger tray icon**: the symbolic icon now fills more of the canvas so it matches

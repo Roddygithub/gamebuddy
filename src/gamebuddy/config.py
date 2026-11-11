@@ -102,6 +102,7 @@ class CoachConfig:
     min_confidence: float = 0.7
     cooldown_s: int = 60
     speak: bool = False
+    save_frames: bool = False  # keep candidate frames on disk to build eval cases later
 
 
 @dataclass

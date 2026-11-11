@@ -163,7 +163,7 @@ reste ambigu. Les recherches web restent disponibles pour les questions qui en o
 - **Conversation continue** — le fil survit aux redémarrages ; la mémoire longue durée est une base SQLite locale.
 - **Contenu épinglé** — builds, checklists, tableaux, liens ou vidéos restent visibles jusqu'à remplacement.
 - **Réponses parlées** — TTS OpenAI, piper ou espeak-ng ; transcription OpenAI, [voxtype](https://github.com/peteonrails/voxtype) (l'outil de dictée d'Omarchy, builds GPU), faster-whisper (hors ligne) ou whisper.cpp.
-- **Mode coach (optionnel, expérimental)** — observation périodique avec une porte de validation prudente : silence tant qu'une fenêtre de décision lente n'est pas clairement visible. Voir [docs/COACH-MODE.md](docs/COACH-MODE.md).
+- **Mode coach (optionnel, expérimental)** — observation périodique avec une porte de validation prudente : silence tant qu'une fenêtre de décision lente n'est pas clairement visible. Mesure-le sur des captures annotées avec `gamebuddy eval` — voir [docs/COACH-MODE.md](docs/COACH-MODE.md) et [evals/coach](evals/coach/README.md).
 - **Multilingue** — interface en français, anglais, allemand, espagnol, italien, portugais (BR/PT) ; Buddy répond dans la langue que tu parles.
 - **Fournisseurs** — un abonnement ChatGPT Plus/Pro (via le Codex CLI, sans clé API), Anthropic Claude, OpenAI, Ollama, ou tout endpoint compatible OpenAI.
 - **Scriptable** — IPC par socket Unix et CLI (`gamebuddy ptt start`, `gamebuddy ask "…"`, `gamebuddy toggle`) : c'est ainsi que les raccourcis Hyprland et le widget de barre Omarchy le pilotent.
@@ -311,13 +311,14 @@ en fenêtré / plein écran sans bordure. La prise en charge du plein écran exc
 | `gamebuddy toggle` / `show` / `hide` | visibilité du widget |
 | `gamebuddy listen on\|off` | écoute mains libres |
 | `gamebuddy coach on\|off` | mode coach |
+| `gamebuddy eval evals/coach` | mesurer le coach sur des captures annotées |
 | `gamebuddy select-window [id]` | choisit la fenêtre du jeu (`gamebuddy windows` liste les ids) |
 | `gamebuddy doctor` | vérifie outils, micro, clés, version Hyprland |
 | `gamebuddy memory list\|forget` | consulte ou efface la mémoire longue durée |
 
 ## Vie privée
 
-- Les captures ne sont prises que quand tu poses une question (ou en mode coach) et ne partent que vers le fournisseur que tu as choisi. Seuls le texte de la conversation et tes notes sont écrits sur disque (`~/.local/share/gamebuddy/gamebuddy.db`). Le dossier de données est réservé à ton compte (mode `700`), ainsi que la base et les fichiers SQLite associés (mode `600`).
+- Les captures ne sont prises que quand tu poses une question (ou en mode coach) et ne partent que vers le fournisseur que tu as choisi. Rien n'est écrit sur disque à part le texte de la conversation et tes notes dans `~/.local/share/gamebuddy/gamebuddy.db` (plus les frames candidates du coach si tu actives `coach.save_frames`, dans le même dossier privé). Le dossier de données est réservé à ton compte (mode `700`), ainsi que la base et les fichiers SQLite associés (mode `600`).
 - Le chargement des pages web est limité aux adresses IP publiques et chaque redirection est vérifiée. eSpeak reçoit les réponses via l'entrée standard, pas dans les arguments visibles du processus.
 - Avec le fournisseur Codex, Buddy conserve la session ChatGPT mais ignore le reste de la configuration Codex de l'utilisateur et désactive le shell, la lecture d'images locales, la recherche web et les connecteurs. Seule la capture du jeu choisie est jointe.
 - Les clés API restent dans `config.toml` (mode 600) ou dans ton environnement.

@@ -1,0 +1,16 @@
+# Synthetic example: a drawn shop panel with readable text. Delete or keep;
+# real captures from coach.save_frames are what the measurement is for.
+[case]
+game = "Dota Underlords"
+description = "Shop panel: gold 52, level 7, Slark (3) and Tidehunter (5) offered, reroll and XP buttons."
+synthetic = true
+
+[perception]
+entities = ["Slark", "Tidehunter"]
+resources = [{ type = "gold", value = "52" }]
+options = ["Buy Slark", "Buy Tidehunter", "Reroll", "Buy XP"]
+
+[expected]
+decision = "ADVISE"
+mention = ["Slark", "Tidehunter", "XP"]
+latency_budget_s = 45.0

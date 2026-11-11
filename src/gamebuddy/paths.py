@@ -41,6 +41,10 @@ def db_file() -> Path:
     return data_dir() / "gamebuddy.db"
 
 
+def coach_frames_dir() -> Path:
+    return data_dir() / "coach_frames"
+
+
 def socket_path() -> Path:
     override = os.environ.get("GAMEBUDDY_SOCKET")
     return Path(override) if override else runtime_dir() / "gamebuddy.sock"

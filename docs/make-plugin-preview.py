@@ -65,15 +65,31 @@ assets.mkdir(exist_ok=True)
 for language in ("en", "fr"):
     panel = BuddyWidget(Translator(language), "Buddy", "ALT, V", 390, 560, mode="panel")
     french = language == "fr"
-    panel.add_user("Aide-moi à préparer la prochaine quête." if french else "Help me prepare for the next quest.")
-    panel.add_bubble("Vérifie ton équipement et tes potions avant de choisir la prochaine quête." if french else "Check your equipment and potions before choosing the next quest.", "bro")
-    panel.show_pin("Prêt à jouer" if french else "Ready to play", "- Vérifier l’équipement\n- Refaire les potions\n- Choisir la prochaine quête" if french else "- Check equipment\n- Restock potions\n- Choose the next quest", "checklist")
+    panel.add_user(
+        "Aide-moi à préparer la prochaine quête." if french else "Help me prepare for the next quest."
+    )
+    panel.add_bubble(
+        "Vérifie ton équipement et tes potions avant de choisir la prochaine quête."
+        if french
+        else "Check your equipment and potions before choosing the next quest.",
+        "bro",
+    )
+    panel.show_pin(
+        "Prêt à jouer" if french else "Ready to play",
+        "- Vérifier l’équipement\n- Refaire les potions\n- Choisir la prochaine quête"
+        if french
+        else "- Check equipment\n- Restock potions\n- Choose the next quest",
+        "checklist",
+    )
     panel.show()
     app.processEvents()
     panel.grab().save(str(assets / f"widget-{language}.png"))
     panel.close()
     orb = BuddyWidget(Translator(language), "Buddy", "ALT, V", 390, 560, mode="orb", compact_orb=False)
-    orb.set_caption("Vérifie tes potions avant de repartir." if french else "Check your potions before heading out.", fade=False)
+    orb.set_caption(
+        "Vérifie tes potions avant de repartir." if french else "Check your potions before heading out.",
+        fade=False,
+    )
     orb.show()
     app.processEvents()
     orb.grab().save(str(assets / f"orb-{language}.png"))
