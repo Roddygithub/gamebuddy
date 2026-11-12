@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -29,6 +30,16 @@ from gamebuddy.llm.router import coach_model, make_provider
 from gamebuddy.prompts import COACH_SYSTEM
 
 REPORT_SCHEMA = "gamebuddy-eval/1"
+
+# ESC and friends turn printed text into terminal commands. Model output,
+# provider errors and dataset labels are foreign: they are stripped at the
+# display boundary, never in the JSON report, which keeps exact replay data.
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]")
+
+
+def _display(value) -> str:
+    """Foreign text, safe to print on a terminal."""
+    return _CONTROL.sub("", str(value))
 
 
 # ---- observation ------------------------------------------------------------
@@ -235,16 +246,20 @@ def _print_summary(report: dict, out: Path, log) -> None:
     meta = f"{report.get('mode', 'live')} · {report.get('provider', '')} {report.get('model', '')}".strip(
         " ·"
     )
-    log(f"Coach eval: {report['dataset']} — {summary['cases']} case(s) × {per_case} run(s) ({meta})")
+    log(
+        f"Coach eval: {_display(report['dataset'])} — {summary['cases']} case(s) × {per_case} run(s) ({_display(meta)})"
+    )
     for case in report["cases"]:
         last = case["runs"][-1]
         state = "PASS" if case["pass_hat_k"] else "FAIL"
         outcome = (
-            f"delivered: {last['advice'][:60]}" if last["accepted"] else f"gate: {last['reject_reason']}"
+            f"delivered: {_display(last['advice'])[:60]}"
+            if last["accepted"]
+            else f"gate: {_display(last['reject_reason'])}"
         )
-        notes = f" — {'; '.join(last['notes'])}" if last["notes"] else ""
+        notes = f" — {_display('; '.join(last['notes']))}" if last["notes"] else ""
         log(
-            f"  {case['name']:<32} {state}  {last['latency_s']:5.1f}s  {last['decision']:<6} {outcome}{notes}"
+            f"  {_display(case['name']):<32} {state}  {last['latency_s']:5.1f}s  {_display(last['decision']):<6} {outcome}{notes}"
         )
     parts = [f"pass@1 {_pct(summary['pass_1'])}"]
     for key, value in summary.items():
@@ -253,7 +268,7 @@ def _print_summary(report: dict, out: Path, log) -> None:
         elif key.startswith("pass_hat_") and key != "pass_hat_1":
             parts.append(f"pass^{key[len('pass_hat_') :]} {_pct(value)}")
     measures = " · ".join(
-        f"{name} {_pct(m['pass_1'])} of {m['applicable_runs']} runs"
+        f"{_display(name)} {_pct(m['pass_1'])} of {m['applicable_runs']} runs"
         for name, m in summary["measures"].items()
         if m["applicable_runs"]
     )
