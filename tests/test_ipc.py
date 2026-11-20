@@ -112,6 +112,77 @@ def test_slow_subscriber_does_not_hold_shutdown_lock(tmp_path):
     assert not worker.is_alive()
 
 
+def test_cancelled_broadcast_stops_before_next_subscriber(tmp_path):
+    import threading
+
+    entered = threading.Event()
+    release = threading.Event()
+    enabled = [True]
+    second_received = []
+
+    class SlowSubscriber:
+        def sendall(self, _line):
+            entered.set()
+            assert release.wait(2)
+
+    class FastSubscriber:
+        def sendall(self, line):
+            second_received.append(line)
+
+    srv = IPCServer(lambda _request: {"ok": True}, tmp_path / "ipc.sock")
+    srv._subscribers.extend((SlowSubscriber(), FastSubscriber()))
+    worker = threading.Thread(
+        target=srv.broadcast,
+        args=("coach",),
+        kwargs={"should_send": lambda: enabled[0], "advice": "test"},
+    )
+    worker.start()
+    assert entered.wait(2)
+    enabled[0] = False
+    release.set()
+    worker.join(2)
+
+    assert not worker.is_alive()
+    assert second_received == []
+
+
+def test_concurrent_broadcasts_are_serialized_per_subscriber(tmp_path):
+    import json
+    import threading
+
+    entered = threading.Event()
+    release = threading.Event()
+    active = [0]
+    received = []
+    guard = threading.Lock()
+
+    class Subscriber:
+        def sendall(self, line):
+            with guard:
+                active[0] += 1
+                assert active[0] == 1
+            if b'"first"' in line:
+                entered.set()
+                assert release.wait(2)
+            received.append(line)
+            with guard:
+                active[0] -= 1
+
+    srv = IPCServer(lambda _request: {"ok": True}, tmp_path / "ipc.sock")
+    srv._subscribers.append(Subscriber())
+    first = threading.Thread(target=srv.broadcast, args=("first",))
+    second = threading.Thread(target=srv.broadcast, args=("second",))
+    first.start()
+    assert entered.wait(2)
+    second.start()
+    release.set()
+    first.join(2)
+    second.join(2)
+
+    assert not first.is_alive() and not second.is_alive()
+    assert [json.loads(line)["event"] for line in received] == ["first", "second"]
+
+
 def test_stopping_rejected_instance_preserves_active_socket():
     import pytest
 

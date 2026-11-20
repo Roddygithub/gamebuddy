@@ -85,7 +85,11 @@ def test_queued_ipc_advice_is_discarded_after_coach_stops():
     tasks = []
     sent = []
     app.bridge = SimpleNamespace(coach_advice=SimpleNamespace(emit=lambda *_args: None))
-    app.ipc = SimpleNamespace(broadcast=lambda *args, **kwargs: sent.append((args, kwargs)))
+    app.ipc = SimpleNamespace(
+        broadcast=lambda *args, should_send=None, **kwargs: (
+            sent.append((args, kwargs)) if should_send() else None
+        )
+    )
     app.pool = SimpleNamespace(start=tasks.append)
     app.cfg = SimpleNamespace(coach=SimpleNamespace(speak=False))
     app._coach_enabled = True

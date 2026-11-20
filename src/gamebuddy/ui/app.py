@@ -778,11 +778,12 @@ class GameBuddyApp(QObject):
             with self._coach_lock:
                 generation = self._coach_generation
 
-            def broadcast_if_current() -> None:
+            def still_current() -> bool:
                 with self._coach_lock:
-                    if not self._coach_enabled or generation != self._coach_generation:
-                        return
-                ipc.broadcast("coach", advice=obs.advice)
+                    return self._coach_enabled and generation == self._coach_generation
+
+            def broadcast_if_current() -> None:
+                ipc.broadcast("coach", should_send=still_current, advice=obs.advice)
 
             self.pool.start(broadcast_if_current)
         if self.cfg.coach.speak:

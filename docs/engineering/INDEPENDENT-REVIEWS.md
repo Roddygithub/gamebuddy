@@ -86,6 +86,22 @@
   `git diff --check` passent. **Revue de suivi requise avant PR**, les nouveaux changements
   n’ont pas encore été inspectés indépendamment.
 
+## Revue 6 — annulation en cours et sérialisation des sockets
+
+- Relecteur: GPT-6.1 Terra, reasoning high, statique en lecture seule; HEAD `58ab0ae`.
+- Findings: un conseil déjà envoi vers un subscriber lent pouvait continuer après désactivation
+  et atteindre les suivants (**P2**); envois simultanés sur un même socket n’étaient plus
+  sérialisés après retrait du verrou global (**P2**). Le détachement/shutdown et l’état de
+  statut R5 étaient jugés corrects sur les chemins inspectés.
+- Réponse dans le diff actuel: predicate de validité (état + génération) vérifiée avant chaque
+  socket et juste après acquisition du verrou dédié à ce socket; un send déjà démarré peut
+  finir au subscriber courant mais les prochains sont supprimés après stop. `IPCServer` garde
+  un verrou d’envoi par socket, tandis que le verrou de liste reste libre durant `sendall`.
+- Tests ajoutés: stop entre le premier envoi bloqué et le second subscriber; deux broadcasts
+  concurrents sur le même subscriber restent des lignes entières et sérialisées. Suite locale
+  à HEAD 58ab0ae: **214 passed**; Ruff, format, shell syntax et diff-check passent. Revue de
+  suivi requise avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans
