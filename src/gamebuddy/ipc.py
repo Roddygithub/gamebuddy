@@ -32,6 +32,7 @@ class IPCServer:
         self.path = path or socket_path()
         self._sock: socket.socket | None = None
         self._subscribers: list[socket.socket] = []
+        self._send_locks: dict[socket.socket, threading.Lock] = {}
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
@@ -65,12 +66,17 @@ class IPCServer:
             except OSError:
                 pass
         with self._lock:
-            for s in self._subscribers:
-                try:
-                    s.close()
-                except OSError:
-                    pass
-            self._subscribers.clear()
+            subscribers, self._subscribers = self._subscribers, []
+            self._send_locks.clear()
+        for s in subscribers:
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                s.close()
+            except OSError:
+                pass
         try:
             if self._bound and self.path.exists():
                 self.path.unlink()
@@ -81,17 +87,29 @@ class IPCServer:
             self._thread.join(timeout=1)
 
     # ---- events ----------------------------------------------------------
-    def broadcast(self, event: str, **payload: Any) -> None:
+    def broadcast(self, event: str, should_send: Callable[[], bool] | None = None, **payload: Any) -> None:
         line = (json.dumps({"event": event, **payload}) + "\n").encode()
         with self._lock:
-            dead = []
-            for s in self._subscribers:
+            subscribers = tuple(
+                (s, self._send_locks.setdefault(s, threading.Lock())) for s in self._subscribers
+            )
+        dead = []
+        for s, send_lock in subscribers:
+            if should_send and not should_send():
+                break
+            with send_lock:
+                if should_send and not should_send():
+                    break
                 try:
                     s.sendall(line)
                 except OSError:
                     dead.append(s)
-            for s in dead:
-                self._subscribers.remove(s)
+        if dead:
+            with self._lock:
+                for s in dead:
+                    if s in self._subscribers:
+                        self._subscribers.remove(s)
+                        self._send_locks.pop(s, None)
 
     # ---- internals -------------------------------------------------------
     def _serve(self) -> None:
@@ -131,9 +149,14 @@ class IPCServer:
                         continue
                     if req.get("cmd") == "subscribe":
                         # A slow subscriber must not block broadcast (or shutdown) forever.
-                        with self._lock:
-                            self._subscribers.append(conn)
-                        conn.sendall(b'{"ok": true, "subscribed": true}\n')
+                        send_lock = threading.Lock()
+                        with send_lock:
+                            conn.sendall(b'{"ok": true, "subscribed": true}\n')
+                            with self._lock:
+                                if self._stop.is_set():
+                                    return
+                                self._subscribers.append(conn)
+                                self._send_locks[conn] = send_lock
                         return  # keep socket open for events; owned by subscribers list
                     try:
                         resp = self.handler(req)

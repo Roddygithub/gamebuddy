@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+- **A coach that keeps up**: the observation loop is now fixed-rate, so a slow
+  model call no longer delays every later look, and stability is confirmed by one
+  re-capture at `coach.confirm_poll_s` instead of waiting a whole interval —
+  an otherwise eligible advice can go out after that fresh frame confirms it.
+- **Bounded, measurable captures**: `capture.max_bytes` caps each screenshot
+  (quality steps down before the frame shrinks), `capture.reuse_ms` reuses a frame
+  captured moments ago so a chat turn and a coach look do not pay for the same
+  screenshot twice, and every coach turn logs `capture_ms` / `eval_ms` /
+  `confirm_ms` / `frame_kib`.
+- **A voice that starts at once**: replies are now spoken sentence by sentence
+  (`speech.tts.split_sentences`) instead of after the full text is synthesized,
+  and a new reply silences the previous one. `timings.synthesis_s` now measures
+  time to the *first* spoken segment.
+- **Coach mode is vision-only, and says so**: coaching a frame needs a model that can see
+  it, so turning coach mode on with a text-only model now shows a clear message naming the
+  model instead of running a coach that answers from the window title. `CoachPipeline.can_see()`
+  enforces it inside the loop too (`pre_gate:no_vision`). Chat with text-only models is
+  unchanged. OCR remains deferred until annotated captures show whether it helps.
+- **Blank captures are skipped**: a uniform frame (black screen, failed capture)
+  no longer costs a perception call — counted in `coach.blank_frames` and logged
+  as `pre_gate:blank_frame`.
+- **`docs/ROADMAP.md`**: latency and perception roadmap.
+
 ## 0.7.0 — 2026-11-11
 
 - **Coach evals**: `gamebuddy eval <dataset>` measures the coach on annotated

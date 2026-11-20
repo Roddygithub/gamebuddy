@@ -30,7 +30,7 @@ def test_capture_targets_window_not_the_visible_desktop(monkeypatch, stable_id):
 
     monkeypatch.setattr(hyprland, "run", run)
     backend = hyprland.HyprlandBackend()
-    window = WindowInfo("0x123", "Game", "game", Rect(0, 0, 10, 10))
+    window = WindowInfo("0x123", "Game", "game", Rect(0, 0, 10, 10), capture_id=stable_id)
     if stable_id:
         assert backend.capture(window) == b"window-pixels"
     else:
@@ -53,3 +53,16 @@ def test_failed_window_capture_never_falls_back_to_screen(monkeypatch):
     with pytest.raises(CaptureError):
         backend.capture(window)
     assert commands == [["grim", "-T", "game-id", "-t", "png", "-"]]
+
+
+def test_reused_address_with_different_stable_id_fails_closed(monkeypatch):
+    backend = hyprland.HyprlandBackend()
+    selected = WindowInfo("0x123", "Game", "game", Rect(0, 0, 10, 10), capture_id="old")
+    replacement = WindowInfo("0x123", "Other", "game", Rect(0, 0, 10, 10), capture_id="new")
+    commands = []
+    monkeypatch.setattr(backend, "find_window", lambda _: replacement)
+    monkeypatch.setattr(hyprland, "run", lambda *args, **kwargs: commands.append(args))
+
+    with pytest.raises(CaptureError, match="window_replaced"):
+        backend.capture(selected)
+    assert commands == []

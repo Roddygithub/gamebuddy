@@ -47,6 +47,8 @@ def test_omarchy_choice_wins_over_the_session_locale(tmp_path, monkeypatch):
 def test_omarchy_aliases_and_unset_file(tmp_path, monkeypatch):
     language_file = tmp_path / "missing"
     monkeypatch.setattr(i18n, "OMARCHY_LANGUAGE_FILE", language_file)
+    monkeypatch.delenv("LC_ALL", raising=False)
+    monkeypatch.delenv("LC_MESSAGES", raising=False)
     monkeypatch.setenv("LANG", "es_MX.UTF-8")
     assert i18n.detect_language() == "es"
     monkeypatch.setenv("LANG", "pt_PT.UTF-8")

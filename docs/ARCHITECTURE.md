@@ -41,11 +41,13 @@ call at the end of the window so a replay never starts with an orphan result.
 
 ## Capture
 
-The model should see the game, not the widget. On Hyprland the widget's own client rectangle
-is read from `hyprctl -j clients` (class `gamebuddy`) and blacked out before encoding; elsewhere
-the Qt frame geometry is used. Capture is a region screenshot (`grim -g`), so an overlapping
-window would show through — the planned fix is a `hyprland-toplevel-export` backend, the same
-mechanism Quickshell's `ScreencopyView` uses in OmaPiP.
+Hyprland resolves the selected client again by address and captures its current
+`stableId` with `grim -T`; a missing target or capture identifier is an error, with no
+desktop fallback. Other backends use their supported window/region capture APIs and mask
+the widget where it may overlap. `capture.max_bytes` bounds encoded JPEG size. The short
+in-memory reuse cache is scoped to the selected window identity and is bypassed for the
+coach's stability re-capture. `gamebuddy capture` exercises one actual target; the coach's
+blank-frame filter is only a uniform-image check, not proof that a live game is selected.
 
 ## Why Qt and not a Quickshell/QML panel
 

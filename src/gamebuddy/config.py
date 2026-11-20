@@ -90,6 +90,8 @@ class CaptureConfig:
     attach_screenshot: bool = True
     max_width: int = 2560
     jpeg_quality: int = 90
+    max_bytes: int = 430_080  # 420 KiB per screenshot; 0 disables (quality steps down first)
+    reuse_ms: int = 250  # reuse a frame this recent instead of capturing again
     mask_overlay: bool = True
 
 
@@ -101,6 +103,7 @@ class CoachConfig:
     model: str = ""  # "" = same provider, cheap default per provider
     min_confidence: float = 0.7
     cooldown_s: int = 60
+    confirm_poll_s: float = 0.3  # one cheap re-capture to prove the window persisted
     speak: bool = False
     save_frames: bool = False  # keep candidate frames on disk to build eval cases later
 

@@ -87,3 +87,16 @@ def test_piper_reuses_warmed_voice_and_changes_model(monkeypatch):
         assert loaded == ["/voices/fr.onnx", "/voices/other.onnx"]
     finally:
         tts._piper_voice.cache_clear()
+
+
+def test_reply_is_voiced_sentence_by_sentence_within_a_bounded_chunk():
+    reply = "**Buy the vest.** It counters their burst. https://example.com/x\n\nThen push mid."
+    assert tts.split_sentences(reply) == ["Buy the vest.", "It counters their burst.", "Then push mid."]
+    long = ", ".join(["word"] * 200)
+    chunks = tts.split_sentences(long, limit=50)
+    assert chunks and all(len(c) <= 50 for c in chunks)
+    assert " ".join(chunks) == long  # nothing dropped, only split
+
+
+def test_empty_reply_is_not_voiced():
+    assert tts.split_sentences("  \n ") == []

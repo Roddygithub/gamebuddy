@@ -78,11 +78,24 @@ class GameBuddyApp(QObject):
         self.recorder = None
         self.listener = None
         self.coach: CoachPipeline | None = None
+        self._coach_enabled = False
+        self._coach_generation = 0
+        self._coach_lock = threading.Lock()
         self.ipc: IPCServer | None = None
         self.tray: QSystemTrayIcon | None = None
         self._speaking = threading.Event()
         self._timings: dict[str, float] = {}
+        self._shot_lock = threading.Lock()
+        self._capture_lock = threading.Lock()
+        self._window_generation = 0
+        self._capture_context = threading.local()
+        self._shot: tuple[float, str, str, str, bytes] | None = None
         self._last_stt_text = ""
+        self._speech_gen = 0  # bumped by each reply, so an older one stops talking
+        self._speech_lock = threading.Lock()
+        self._speech_cancelled: threading.Event | None = None
+        self._speech_source = ""
+        self._speech_capture_generation: int | None = None
 
         self.kin = Kin(self.cfg, self.store, self._kin_callbacks())
         self.kin.language = self.tr.language
@@ -168,7 +181,7 @@ class GameBuddyApp(QObject):
         b.error.connect(self._on_error)
         b.update_available.connect(self._on_update_available)
         b.level.connect(w.set_level)
-        b.coach_advice.connect(w.add_coach)
+        b.coach_advice.connect(self._show_coach_advice)
         b.command.connect(self._handle_command_gui)
         b.window_lost.connect(self._on_window_lost)
         b.memory.connect(lambda _n: w.set_status("ready"))
@@ -410,7 +423,14 @@ class GameBuddyApp(QObject):
             self.select_window(window)
 
     def select_window(self, window: WindowInfo | None) -> None:
-        self.window = window
+        with self._shot_lock:
+            self.window = window
+            self._window_generation += 1
+            generation = self._window_generation
+            self._shot = None
+        # A Coach voice describes the old target and must stop with that target.
+        # ASK replies are unrelated and remain audible.
+        self._cancel_coach_speech(keep_capture_generation=generation)
         remember_window(window)
         self.kin.game_title = window.title if window else ""
         if self.coach:
@@ -438,26 +458,131 @@ class GameBuddyApp(QObject):
         g = self.widget.frameGeometry()
         return Rect(g.x(), g.y(), g.width(), g.height()) if self.widget.isVisible() else None
 
-    def capture_game(self) -> bytes | None:
-        """JPEG of the selected game window, or None. Safe to call from worker threads."""
-        if self.window is None:
-            return None
+    def capture_game(self, fresh: bool = False) -> bytes | None:
+        """JPEG of the selected game window, or None. Safe to call from worker threads.
+
+        A frame captured within ``capture.reuse_ms`` is reused, so a chat turn and a
+        coach look do not each pay for the same screenshot. ``fresh=True`` bypasses
+        the cache (the coach's stability check must look again).
+        """
+        with self._capture_lock:
+            self._capture_context.generation = None
+            return self._capture_game(fresh)
+
+    def _capture_game(self, fresh: bool = False) -> bytes | None:
+        with self._shot_lock:
+            window = self.window
+            if window is None:
+                return None
+            generation = self._window_generation
+            source = (window.id, window.capture_id, window.app_id)
+            cached = self._shot
+            reuse = (
+                not fresh
+                and cached
+                and cached[1:4] == source
+                and (time.monotonic() - cached[0]) * 1000 < self.cfg.capture.reuse_ms
+            )
+        if reuse:
+            lookup_failed = False
+            try:
+                current = self.backend.find_window(window.id)
+            except Exception:  # noqa: BLE001 — stale frames fail closed
+                current = None
+                lookup_failed = True
+            if current and (current.id, current.capture_id, current.app_id) == source:
+                with self._shot_lock:
+                    if (
+                        self.window is window
+                        and self._window_generation == generation
+                        and self._shot is cached
+                    ):
+                        self._capture_context.generation = generation
+                        return cached[4]
+            with self._shot_lock:
+                if self._shot is cached:
+                    self._shot = None
+            if not current or (current.id, current.capture_id, current.app_id) != source:
+                if not lookup_failed:
+                    self._notify_window_lost(window, generation)
+                return None
+        else:
+            # Validate identity on fresh and expired-cache paths too. Backends
+            # such as Hyprland may reuse a window address after replacement.
+            lookup_failed = False
+            try:
+                current = self.backend.find_window(window.id)
+            except Exception:  # noqa: BLE001 — stale frames fail closed
+                current = None
+                lookup_failed = True
+            if not current or (current.id, current.capture_id, current.app_id) != source:
+                with self._shot_lock:
+                    if self._shot is cached:
+                        self._shot = None
+                if not lookup_failed:
+                    self._notify_window_lost(window, generation)
+                return None
         try:
-            png = self.backend.capture(self.window)
+            png = self.backend.capture(window)
         except CaptureError as exc:
-            if str(exc) == "window_lost":
-                self.bridge.window_lost.emit()
+            with self._shot_lock:
+                if self.window is window:
+                    self._shot = None
+            if str(exc) in ("window_lost", "window_replaced"):
+                self._notify_window_lost(window, generation)
             else:
                 log.warning("capture failed: %s", exc)
             return None
         except Exception as exc:  # noqa: BLE001
+            with self._shot_lock:
+                if self.window is window:
+                    self._shot = None
             log.warning("capture failed: %s", exc)
             return None
-        mask = overlay_mask(self.window, self._overlay_rect())
-        return to_jpeg(png, self.cfg.capture.max_width, self.cfg.capture.jpeg_quality, mask)
+        mask = overlay_mask(window, self._overlay_rect())
+        jpeg = to_jpeg(
+            png,
+            self.cfg.capture.max_width,
+            self.cfg.capture.jpeg_quality,
+            mask,
+            self.cfg.capture.max_bytes,
+        )
+        with self._shot_lock:
+            # A window can be changed while the backend is capturing it. Never
+            # return or cache that old target after the user selects another.
+            if self.window is not window or self._window_generation != generation:
+                return None
+            self._shot = (time.monotonic(), *source, jpeg)
+            self._capture_context.generation = generation
+        return jpeg
 
-    def _on_window_lost(self) -> None:
-        self.window = None
+    def _notify_window_lost(self, window: WindowInfo, generation: int) -> None:
+        with self._shot_lock:
+            if self.window is not window or self._window_generation != generation:
+                return
+            self._shot = None
+        self.bridge.window_lost.emit(window.id, window.capture_id, window.app_id, generation)
+
+    def _capture_context_is_current(self, generation: int | None) -> bool:
+        with self._shot_lock:
+            return (
+                generation is not None and generation == self._window_generation and self.window is not None
+            )
+
+    def _on_window_lost(self, window_id: str, capture_id: str, app_id: str, generation: int) -> None:
+        with self._shot_lock:
+            if (
+                not self.window
+                or self._window_generation != generation
+                or (self.window.id, self.window.capture_id, self.window.app_id)
+                != (window_id, capture_id, app_id)
+            ):
+                return
+            self.window = None
+            self._window_generation += 1
+            generation = self._window_generation
+            self._shot = None
+        self._cancel_coach_speech(keep_capture_generation=generation)
         self.kin.game_title = ""
         self.widget.set_window_title(None)
         self.widget.add_error(self.tr("window_lost"))
@@ -467,6 +592,7 @@ class GameBuddyApp(QObject):
         text = text.strip()
         if not text or self.kin.busy:
             return
+        self._cancel_speech()
         self.widget.add_user(text)
         self.widget.begin_stream()
         self.pool.start(lambda: self._ask_worker(text))
@@ -487,30 +613,132 @@ class GameBuddyApp(QObject):
     def _on_reply_done(self, text: str) -> None:
         self.widget.end_stream(text)
         if text.strip() and self.cfg.speech.speak_replies and self.cfg.speech.tts != "none":
-            self.pool.start(lambda: self._speak(text))
+            self._queue_speech(text)
 
-    def _speak(self, text: str) -> None:
+    def _queue_speech(
+        self,
+        text: str,
+        *,
+        coach_generation: int | None = None,
+        capture_generation: int | None = None,
+    ) -> None:
+        """Assign cancellation before a worker can wait in the thread-pool queue."""
         from gamebuddy.audio import player
-        from gamebuddy.speech.tts import synthesize
 
-        try:
-            started = time.monotonic()
-            audio, fmt = synthesize(text, self.cfg, self.tr.language)
-            self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
-            if not audio:
+        with self._speech_lock:
+            if coach_generation is not None:
+                with self._coach_lock:
+                    if not self._coach_enabled or coach_generation != self._coach_generation:
+                        return
+                if capture_generation is not None and not self._capture_context_is_current(
+                    capture_generation
+                ):
+                    return
+            if self._speech_cancelled:
+                self._speech_cancelled.set()
+            self._speech_gen += 1
+            generation = self._speech_gen
+            cancelled = threading.Event()
+            self._speech_cancelled = cancelled
+            self._speech_source = "coach" if coach_generation is not None else "reply"
+            self._speech_capture_generation = capture_generation
+            player.stop()
+        self.pool.start(
+            lambda: self._speak(text, generation, cancelled, coach_generation, capture_generation)
+        )
+
+    def _speak(
+        self,
+        text: str,
+        generation: int,
+        cancelled: threading.Event,
+        coach_generation: int | None = None,
+        capture_generation: int | None = None,
+    ) -> None:
+        """Synthesize sentence by sentence and stop promptly when superseded."""
+        from gamebuddy.audio import player
+        from gamebuddy.speech.tts import split_sentences, synthesize
+
+        chunks = split_sentences(text)
+        if not chunks:
+            return
+
+        def coach_current() -> bool:
+            if coach_generation is None:
+                return True
+            with self._coach_lock:
+                current = self._coach_enabled and coach_generation == self._coach_generation
+            return current and (
+                capture_generation is None or self._capture_context_is_current(capture_generation)
+            )
+
+        with self._speech_lock:
+            if cancelled.is_set() or generation != self._speech_gen or not coach_current():
                 return
+            started = time.monotonic()
             self._speaking.set()
             if self.listener:
                 self.listener.paused = True
+        try:
             self.bridge.status.emit("speaking")
-            player.play(audio, fmt, self.cfg.audio.output_device)
+            for index, chunk in enumerate(chunks):
+                if cancelled.is_set() or generation != self._speech_gen or not coach_current():
+                    return
+                audio, fmt = synthesize(chunk, self.cfg, self.tr.language)
+                if index == 0:
+                    self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
+                if cancelled.is_set() or generation != self._speech_gen or not coach_current():
+                    return
+                if audio:
+                    player.play(audio, fmt, self.cfg.audio.output_device, cancelled)
         except Exception as exc:  # noqa: BLE001
             log.warning("tts failed: %s", exc)
         finally:
+            with self._speech_lock:
+                if generation == self._speech_gen:  # a newer reply owns the status now
+                    self._speaking.clear()
+                    self._speech_source = ""
+                    self._speech_capture_generation = None
+                    if self.listener:
+                        self.listener.paused = False
+                    self.bridge.status.emit("ready")
+
+    def _cancel_speech(self) -> None:
+        """Stop active playback and prevent its worker from voicing later chunks."""
+        from gamebuddy.audio import player
+
+        with self._speech_lock:
+            self._speech_gen += 1
+            if self._speech_cancelled:
+                self._speech_cancelled.set()
+            self._speech_source = ""
+            self._speech_capture_generation = None
+            player.stop()
             self._speaking.clear()
             if self.listener:
                 self.listener.paused = False
-            self.bridge.status.emit("ready")
+
+    def _cancel_coach_speech(self, *, keep_capture_generation: int | None = None) -> None:
+        """Stop stale Coach audio, preserving a job for a newly selected window."""
+        from gamebuddy.audio import player
+
+        with self._speech_lock:
+            if self._speech_source != "coach":
+                return
+            if (
+                keep_capture_generation is not None
+                and getattr(self, "_speech_capture_generation", None) == keep_capture_generation
+            ):
+                return
+            self._speech_gen += 1
+            if self._speech_cancelled:
+                self._speech_cancelled.set()
+            self._speech_source = ""
+            self._speech_capture_generation = None
+            player.stop()
+            self._speaking.clear()
+            if self.listener:
+                self.listener.paused = False
 
     def _on_error(self, message: str) -> None:
         self.widget.end_stream("")
@@ -528,9 +756,7 @@ class GameBuddyApp(QObject):
                 self.recorder = Recorder(
                     self.cfg.audio.sample_rate, self.cfg.audio.input_device, on_level=self.bridge.level.emit
                 )
-            from gamebuddy.audio import player
-
-            player.stop()
+            self._cancel_speech()
             self.recorder.start()
             self.widget.set_recording(True)
             self.widget.set_status("listening")
@@ -618,7 +844,9 @@ class GameBuddyApp(QObject):
 
     # ---- coach ---------------------------------------------------------------
     def toggle_coach(self) -> None:
-        self.set_coach(not (self.coach and self.coach.running))
+        with self._coach_lock:
+            enabled = self._coach_enabled
+        self.set_coach(not enabled)
 
     def set_coach(self, on: bool) -> None:
         if on:
@@ -628,23 +856,76 @@ class GameBuddyApp(QObject):
                     store=self.store,
                     provider_factory=lambda: make_provider(self.cfg, coach_model(self.cfg)),
                     capture=self.capture_game,
+                    capture_fresh=lambda: self.capture_game(fresh=True),
+                    capture_context=lambda: getattr(self._capture_context, "generation", None),
+                    context_is_current=self._capture_context_is_current,
                     on_advice=self._on_coach_advice,
                     language=self.tr.language,
                     game_title=self.kin.game_title,
                 )
+            try:  # a missing key surfaces on the first tick, as it always did
+                ok, label = self.coach.can_see()
+            except Exception:  # noqa: BLE001
+                ok = True
+            if not ok:
+                # Better to refuse here than to run a coach that only reads the title.
+                self.widget.add_error(self.tr("coach_needs_vision", model=label))
+                return
             self.coach.start()
-        elif self.coach:
-            self.coach.stop()
+            with self._coach_lock:
+                if not self._coach_enabled:
+                    self._coach_generation += 1
+                self._coach_enabled = True
+        else:
+            with self._coach_lock:
+                if self._coach_enabled:
+                    self._coach_generation += 1
+                self._coach_enabled = False
+            self._cancel_coach_speech()
+            if self.coach:
+                self.coach.stop()
         self.widget.set_coach(on)
         self.widget.set_status("coach_on" if on else "coach_off")
         QTimer.singleShot(1500, lambda: self.widget.set_status("ready"))
 
-    def _on_coach_advice(self, obs: Observation) -> None:
-        self.bridge.coach_advice.emit(obs.advice, obs.rationale)
+    def _on_coach_advice(self, obs: Observation, capture_generation: int | None = None) -> None:
+        with self._coach_lock:
+            generation = self._coach_generation
+        if capture_generation is not None and not self._capture_context_is_current(capture_generation):
+            return
+        self.bridge.coach_advice.emit(obs.advice, obs.rationale, generation, capture_generation)
         if self.ipc:
-            self.ipc.broadcast("coach", advice=obs.advice)
+            ipc = self.ipc
+
+            def still_current() -> bool:
+                with self._coach_lock:
+                    coach_current = self._coach_enabled and generation == self._coach_generation
+                return coach_current and (
+                    capture_generation is None or self._capture_context_is_current(capture_generation)
+                )
+
+            def broadcast_if_current() -> None:
+                ipc.broadcast("coach", should_send=still_current, advice=obs.advice)
+
+            self.pool.start(broadcast_if_current)
         if self.cfg.coach.speak:
-            self.pool.start(lambda: self._speak(obs.advice))
+            self._queue_speech(
+                obs.advice,
+                coach_generation=generation,
+                capture_generation=capture_generation,
+            )
+
+    def _show_coach_advice(
+        self,
+        advice: str,
+        rationale: str,
+        generation: int,
+        capture_generation: int | None = None,
+    ) -> None:
+        with self._coach_lock:
+            current = self._coach_enabled and generation == self._coach_generation
+        if current and (capture_generation is None or self._capture_context_is_current(capture_generation)):
+            self.widget.add_coach(advice, rationale)
 
     # ---- misc ----------------------------------------------------------------
     def unpin(self) -> None:
@@ -718,6 +999,8 @@ class GameBuddyApp(QObject):
 
     # ---- IPC -----------------------------------------------------------------
     def status_snapshot(self) -> dict[str, Any]:
+        with self._coach_lock:
+            coach_enabled = self._coach_enabled
         return {
             "ok": True,
             "visible": self.widget.isVisible(),
@@ -726,7 +1009,8 @@ class GameBuddyApp(QObject):
             "recording": bool(self.recorder and self.recorder.recording),
             "hands_free": bool(self.listener and self.listener.active),
             "dropped_utterances": self.listener.dropped if self.listener else 0,
-            "coach": bool(self.coach and self.coach.running),
+            "coach": coach_enabled,
+            "coach_turn": dict(self.coach.metrics["last_turn"]) if self.coach else {},
             "busy": self.kin.busy,
             "backend": self.backend.name,
             "provider": self.cfg.llm.provider,
@@ -791,9 +1075,7 @@ class GameBuddyApp(QObject):
                 action == "on" if action in ("on", "off") else not (self.listener and self.listener.active)
             )
         elif cmd == "coach":
-            self.set_coach(
-                action == "on" if action in ("on", "off") else not (self.coach and self.coach.running)
-            )
+            self.set_coach(action == "on" if action in ("on", "off") else not self._coach_enabled)
         elif cmd == "select_window":
             if not self.select_window_by_id(str(req.get("id", ""))):
                 self.pick_window()

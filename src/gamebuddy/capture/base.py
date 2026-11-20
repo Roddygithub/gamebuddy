@@ -187,19 +187,53 @@ def get_backend(preferred: str = "auto") -> CaptureBackend:
     return CaptureBackend()
 
 
-def to_jpeg(png: bytes, max_width: int = 1280, quality: int = 72, mask: Rect | None = None) -> bytes:
-    """Downscale + compress a PNG screenshot; optionally black out ``mask`` (window-relative coords)."""
+def _encode(img, quality: int) -> bytes:
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=quality, optimize=True)
+    return out.getvalue()
+
+
+def to_jpeg(
+    png: bytes,
+    max_width: int = 1280,
+    quality: int = 72,
+    mask: Rect | None = None,
+    max_bytes: int = 0,
+) -> bytes:
+    """Downscale + compress a PNG screenshot; optionally black out ``mask`` (window-relative coords).
+
+    ``max_bytes`` caps the result: quality steps down first, then the frame shrinks.
+    A bounded payload costs less upload and less model prefill than a big one.
+    """
     from PIL import Image, ImageDraw
 
+    if max_bytes and max_bytes < 1024:
+        raise ValueError("max_bytes must be 0 or at least 1024")
     img = Image.open(io.BytesIO(png)).convert("RGB")
     if mask and mask.w > 0 and mask.h > 0:
         ImageDraw.Draw(img).rectangle([mask.x, mask.y, mask.x + mask.w, mask.y + mask.h], fill=(16, 16, 16))
     if img.width > max_width:
         ratio = max_width / img.width
         img = img.resize((max_width, max(1, int(img.height * ratio))), Image.LANCZOS)
-    out = io.BytesIO()
-    img.save(out, format="JPEG", quality=quality, optimize=True)
-    return out.getvalue()
+    q = quality
+    reduced_quality = False
+    while True:
+        data = _encode(img, q)
+        if not max_bytes or len(data) <= max_bytes:
+            return data
+        if not reduced_quality and q > 40:
+            q = max(40, q - 20)
+            reduced_quality = True
+            continue
+        if img.width == img.height == 1:
+            raise ValueError("max_bytes is too small for a valid JPEG")
+        # JPEG size does not scale exactly with pixel area; the gentler exponent
+        # keeps the first estimate close and the loop corrects any overshoot.
+        ratio = min(0.9, (max_bytes / len(data)) ** 0.35 * 0.95)
+        size = (max(1, int(img.width * ratio)), max(1, int(img.height * ratio)))
+        if size == img.size:
+            size = (max(1, img.width - 1), max(1, img.height - 1))
+        img = img.resize(size, Image.LANCZOS)
 
 
 def overlay_mask(window: WindowInfo, overlay: Rect | None) -> Rect | None:

@@ -98,6 +98,9 @@ class _FrameProvider:
         self.sequence = sequence or []
         self.calls = 0
 
+    def supports_vision(self) -> bool:
+        return True
+
     def chat(self, system, messages, **kwargs):
         self.calls += 1
         if self.sequence:
@@ -383,9 +386,7 @@ def test_save_frames_keeps_one_file_per_candidate(tmp_path, monkeypatch):
     pipeline.tick()
     directory = tmp_path / "xdg" / "gamebuddy" / "coach_frames" / "unknown"
     assert len(list(directory.glob("*.jpg"))) == 1  # first candidate saved
-    pipeline.tick()  # unchanged frame: stability delivery, not a new candidate
-    assert len(advice) == 1
-    assert len(list(directory.glob("*.jpg"))) == 1
+    assert len(advice) == 1  # confirmed by one re-capture, inside the same turn
     pipeline.tick()  # a new frame becomes a new candidate
     assert len(list(directory.glob("*.jpg"))) == 2
 

@@ -369,7 +369,12 @@ def main(argv: list[str] | None = None) -> int:
             print("gamebuddy: no window to capture", file=sys.stderr)
             return 1
         Path(args.out).write_bytes(
-            to_jpeg(backend.capture(target), cfg.capture.max_width, cfg.capture.jpeg_quality)
+            to_jpeg(
+                backend.capture(target),
+                cfg.capture.max_width,
+                cfg.capture.jpeg_quality,
+                max_bytes=cfg.capture.max_bytes,
+            )
         )
         print(f"captured '{target.title}' → {args.out}")
         return 0
