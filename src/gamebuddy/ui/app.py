@@ -88,6 +88,7 @@ class GameBuddyApp(QObject):
         self._shot_lock = threading.Lock()
         self._capture_lock = threading.Lock()
         self._window_generation = 0
+        self._capture_context = threading.local()
         self._shot: tuple[float, str, str, str, bytes] | None = None
         self._last_stt_text = ""
         self._speech_gen = 0  # bumped by each reply, so an older one stops talking
@@ -460,6 +461,7 @@ class GameBuddyApp(QObject):
         the cache (the coach's stability check must look again).
         """
         with self._capture_lock:
+            self._capture_context.generation = None
             return self._capture_game(fresh)
 
     def _capture_game(self, fresh: bool = False) -> bytes | None:
@@ -467,6 +469,7 @@ class GameBuddyApp(QObject):
             window = self.window
             if window is None:
                 return None
+            generation = self._window_generation
             source = (window.id, window.capture_id, window.app_id)
             cached = self._shot
             reuse = (
@@ -484,14 +487,19 @@ class GameBuddyApp(QObject):
                 lookup_failed = True
             if current and (current.id, current.capture_id, current.app_id) == source:
                 with self._shot_lock:
-                    if self.window is window and self._shot is cached:
+                    if (
+                        self.window is window
+                        and self._window_generation == generation
+                        and self._shot is cached
+                    ):
+                        self._capture_context.generation = generation
                         return cached[4]
             with self._shot_lock:
                 if self._shot is cached:
                     self._shot = None
             if not current or (current.id, current.capture_id, current.app_id) != source:
                 if not lookup_failed:
-                    self._notify_window_lost(window)
+                    self._notify_window_lost(window, generation)
                 return None
         else:
             # Validate identity on fresh and expired-cache paths too. Backends
@@ -507,7 +515,7 @@ class GameBuddyApp(QObject):
                     if self._shot is cached:
                         self._shot = None
                 if not lookup_failed:
-                    self._notify_window_lost(window)
+                    self._notify_window_lost(window, generation)
                 return None
         try:
             png = self.backend.capture(window)
@@ -516,7 +524,7 @@ class GameBuddyApp(QObject):
                 if self.window is window:
                     self._shot = None
             if str(exc) in ("window_lost", "window_replaced"):
-                self._notify_window_lost(window)
+                self._notify_window_lost(window, generation)
             else:
                 log.warning("capture failed: %s", exc)
             return None
@@ -537,18 +545,24 @@ class GameBuddyApp(QObject):
         with self._shot_lock:
             # A window can be changed while the backend is capturing it. Never
             # return or cache that old target after the user selects another.
-            if self.window is not window:
+            if self.window is not window or self._window_generation != generation:
                 return None
             self._shot = (time.monotonic(), *source, jpeg)
+            self._capture_context.generation = generation
         return jpeg
 
-    def _notify_window_lost(self, window: WindowInfo) -> None:
+    def _notify_window_lost(self, window: WindowInfo, generation: int) -> None:
         with self._shot_lock:
-            if self.window is not window:
+            if self.window is not window or self._window_generation != generation:
                 return
             self._shot = None
-            generation = self._window_generation
         self.bridge.window_lost.emit(window.id, window.capture_id, window.app_id, generation)
+
+    def _capture_context_is_current(self, generation: int | None) -> bool:
+        with self._shot_lock:
+            return (
+                generation is not None and generation == self._window_generation and self.window is not None
+            )
 
     def _on_window_lost(self, window_id: str, capture_id: str, app_id: str, generation: int) -> None:
         with self._shot_lock:
@@ -811,6 +825,8 @@ class GameBuddyApp(QObject):
                     provider_factory=lambda: make_provider(self.cfg, coach_model(self.cfg)),
                     capture=self.capture_game,
                     capture_fresh=lambda: self.capture_game(fresh=True),
+                    capture_context=lambda: getattr(self._capture_context, "generation", None),
+                    context_is_current=self._capture_context_is_current,
                     on_advice=self._on_coach_advice,
                     language=self.tr.language,
                     game_title=self.kin.game_title,

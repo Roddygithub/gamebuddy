@@ -156,6 +156,21 @@
   et deux captures fraîches bloquées pour vérifier l’ordre cache. Suite: **225 passed**; Ruff,
   format, shell syntax, diff-check passent. Revue de suivi requise avant PR.
 
+## Revue 11 — génération de capture et fraîcheur Coach
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `c37abb4`.
+- Findings: (1) Portal peut réutiliser le même objet `SCREEN`; une capture ancienne pouvait
+  alors émettre un signal après re-sélection ou alimenter le cache de la nouvelle génération
+  (**P2**); (2) Coach pouvait confirmer une observation avec une nouvelle fenêtre si les dHash
+  étaient proches (**P2**).
+- Réponse dans le diff courant: capture prend un snapshot de `_window_generation`, vérifie
+  cette même génération à chaque réutilisation/cache/fin/notification; l’UI et Coach portent
+  la génération du frame initial; la re-capture de confirmation doit garder le même contexte,
+  et la livraison revérifie le contexte courant.
+- Tests ajoutés: sélection du même objet pendant capture; changement de cible entre frame
+  initiale et confirmation malgré des pixels identiques. Suite locale: **227 passed**; Ruff,
+  format, shell syntax et diff-check passent. Revue de suivi requise avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans

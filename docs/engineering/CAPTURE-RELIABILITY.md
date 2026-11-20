@@ -21,7 +21,9 @@ de cette mission. Une capture live du jeu n’a pas été exécutée.
    app_id)` correspond encore et que le backend retrouve cette même source. Une erreur,
    perte ou sélection différente invalide le cache. L’image est gardée en mémoire; ce
    mécanisme ne l’écrit pas sur disque. Un verrou d’acquisition distinct sérialise les
-   captures et empêche une frame lente d’écraser un résultat plus récent.
+   captures et empêche une frame lente d’écraser un résultat plus récent. Chaque frame porte
+   le compteur de sélection constaté à l’acquisition; une re-sélection même du même objet
+   invalide le résultat tardif.
 7. Coach contourne ce cache pour sa seconde capture de confirmation. ASK capture à la
    demande et joint le résultat au provider sélectionné.
 
@@ -33,7 +35,8 @@ de cette mission. Une capture live du jeu n’a pas été exécutée.
   sélection pendant l’acquisition ne renvoie pas la frame; une notification de perte
   retardée ne détruit pas la nouvelle sélection; une source absente est signalée après un
   lookup concluant, mais une erreur transitoire de lookup n’efface pas le titre; deux captures
-  fraîches concurrentes n’inversent pas l’âge du cache.
+  fraîches concurrentes n’inversent pas l’âge du cache; une re-sélection d’un même objet
+  invalide l’ancienne acquisition.
 - `tests/test_observer_capture.py`: préserve l’image ultra-large sans plafond et vérifie
   qu’une image haute entropie respecte le budget; refuse un budget trop petit pour un JPEG.
 - `tests/test_coach_stability.py`: une frame changée pendant la confirmation ne produit

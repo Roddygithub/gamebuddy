@@ -195,6 +195,24 @@ def test_stop_during_confirmation_prevents_advice_delivery(tmp_path):
     assert advice == []
 
 
+def test_window_change_during_confirmation_drops_old_context_advice(tmp_path):
+    pipeline, advice, _ = _build(tmp_path, [SHOP], [SHOP_FRAME])
+    selection = [1]
+    pipeline.capture_context = lambda: selection[0]
+    pipeline.context_is_current = lambda context: context == selection[0]
+
+    def switch_selection_then_capture():
+        selection[0] = 2
+        return SHOP_FRAME  # similar pixels from another target must not validate old advice
+
+    pipeline.capture_fresh = switch_selection_then_capture
+
+    pipeline.tick()
+
+    assert advice == []
+    assert pipeline.metrics["reasoner_calls"] == 1
+
+
 def test_coach_restarts_while_stopped_capture_finishes(tmp_path):
     pipeline, advice, _store = _build(tmp_path, [SHOP], [])
     pipeline.cfg.coach.interval_s = 0.01

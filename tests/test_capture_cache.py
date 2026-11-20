@@ -43,6 +43,7 @@ def _app(window: WindowInfo) -> GameBuddyApp:
     app._shot_lock = threading.Lock()
     app._capture_lock = threading.Lock()
     app._window_generation = 1
+    app._capture_context = threading.local()
     app._shot = None
     app.window = window
     app.cfg = SimpleNamespace(capture=CaptureConfig(reuse_ms=250))
@@ -99,11 +100,27 @@ def test_frame_is_discarded_if_selection_changes_during_capture():
     assert app._shot is None
 
 
+def test_reselecting_same_window_during_capture_discards_old_result():
+    selected = WindowInfo("1", "Portal screen", "", Rect(0, 0, 32, 32))
+    app = _app(selected)
+
+    def reselect_same_object():
+        with app._shot_lock:
+            app._window_generation += 1
+
+    app.backend.on_capture = reselect_same_object
+
+    assert app.capture_game(fresh=True) is None
+    assert app.window is selected
+    assert app._shot is None
+
+
 def test_old_window_lost_notification_does_not_clear_new_selection():
     selected = WindowInfo("1", "New game", "new", Rect(0, 0, 32, 32), capture_id="new")
     app = GameBuddyApp.__new__(GameBuddyApp)
     app._shot_lock = threading.Lock()
     app._window_generation = 2
+    app._capture_context = threading.local()
     app.window = selected
     app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"new frame")
 

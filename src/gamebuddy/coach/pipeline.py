@@ -50,6 +50,8 @@ class CoachPipeline:
         language: str = "en",
         game_title: str = "",
         capture_fresh: Callable[[], bytes | None] | None = None,
+        capture_context: Callable[[], int | None] | None = None,
+        context_is_current: Callable[[int | None], bool] | None = None,
     ):
         self.cfg = cfg
         self.store = store
@@ -57,6 +59,8 @@ class CoachPipeline:
         self.capture = capture
         # Confirming stability needs a new frame, never a cached one.
         self.capture_fresh = capture_fresh or capture
+        self.capture_context = capture_context
+        self.context_is_current = context_is_current or (lambda _context: True)
         self.on_advice = on_advice
         self.on_status = on_status
         self.language = language
@@ -162,6 +166,9 @@ class CoachPipeline:
         frame = self.capture()
         if stop_event.is_set() or not frame:
             return None
+        context = self.capture_context() if self.capture_context else None
+        if not self.context_is_current(context):
+            return None
         self.metrics["frames"] += 1
         self.metrics["last_frame_bytes"] = len(frame)
         capture_ms = int((time.monotonic() - started) * 1000)
@@ -187,7 +194,7 @@ class CoachPipeline:
         eval_started = time.monotonic()
         obs = self.evaluate(frame)
         eval_ms = int((time.monotonic() - eval_started) * 1000)
-        if stop_event.is_set():
+        if stop_event.is_set() or not self.context_is_current(context):
             self._log_turn(capture_ms, eval_ms, 0, "cancelled")
             return None
         self._last_hash = h
@@ -199,7 +206,7 @@ class CoachPipeline:
         # This reduces transient advice; a perceptual hash is not a hard guarantee.
         self.store.log_coach("pre_gate", "await_stability", obs.advice, self.game_title)
         confirm_started = time.monotonic()
-        stable = self._confirm(stop_event)
+        stable = self._confirm(stop_event, context)
         confirm_ms = int((time.monotonic() - confirm_started) * 1000)
         if not stable:
             self.store.log_coach("pre_gate", "screen_moved", obs.advice, self.game_title)
@@ -208,14 +215,16 @@ class CoachPipeline:
         # stop() and delivery share a lock so cancellation during confirmation
         # cannot leak advice after Coach has been disabled.
         with self._delivery_lock:
-            if stop_event.is_set():
+            if stop_event.is_set() or not self.context_is_current(context):
                 self._log_turn(capture_ms, eval_ms, confirm_ms, "cancelled")
                 return None
             self._deliver(obs)
         self._log_turn(capture_ms, eval_ms, confirm_ms, "delivered")
         return obs
 
-    def _confirm(self, stop_event: threading.Event | None = None) -> bool:
+    def _confirm(
+        self, stop_event: threading.Event | None = None, expected_context: int | None = None
+    ) -> bool:
         """Did the screen we just judged survive one more look?
 
         Polling at ``confirm_poll_s`` costs a capture and a perceptual hash instead
@@ -228,6 +237,10 @@ class CoachPipeline:
         self.metrics["confirm_checks"] += 1
         if stop_event.is_set() or not frame:
             return False
+        if self.capture_context:
+            confirmed_context = self.capture_context()
+            if confirmed_context != expected_context or not self.context_is_current(confirmed_context):
+                return False
         h = dhash(frame)
         if self._last_hash is not None and hash_distance(h, self._last_hash) >= self.cfg.coach.min_change:
             return False
