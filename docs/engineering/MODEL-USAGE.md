@@ -8,8 +8,9 @@
   et `serviceTier=default`; elles ne peuvent pas être modifiées par le dépôt. La mission
   demande Luna Low, mais cette exécution héritée est High. J’ai limité l’escalade de raisonnement
   et utilisé des outils déterministes pour les tests/mesures.
-- Revue prévue: GPT-6.1 Terra, raisonnement medium, instance `codex`; le modèle et ses options
-  sont vérifiés dans le retour de délégation avant d’interpréter le résultat.
+- Revue indépendante: GPT-6.1 Terra, reasoning high pour les rounds R1–R16, medium pour R17,
+  instance `codex`; chaque résultat a été contrôlé dans le retour de délégation. R17 n’a relevé
+  aucun défaut matériel.
 - Aucun Sol/Astra n’a été utilisé. Sol ne sera demandé que pour une question architecture
   réellement complexe ou une décision sécurité critique que Terra ne peut trancher.
 

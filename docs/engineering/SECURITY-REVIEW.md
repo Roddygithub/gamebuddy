@@ -44,11 +44,12 @@ une validation d’un provider distant.
 
 ## Diff et validation de cette mission
 
-Les modifications récentes corrigent une course de cache de capture; elles ne réduisent pas
-les protections existantes et ne stockent aucune frame de test. Les tests en mémoire couvrent
-le changement d’identité et la perte de sélection. La revue indépendante Terra du diff entier
-est requise avant publication; son résultat et tout correctif seront consignés dans
-`INDEPENDENT-REVIEWS.md`.
+Les modifications corrigent l’identité de capture et les sorties Coach obsolètes; elles ne
+réduisent pas les protections existantes et ne stockent aucune frame de test. Les tests
+déterministes couvrent le changement de fenêtre, la disparition, l’IPC et la voix. Les revues
+indépendantes Terra sont consignées dans `INDEPENDENT-REVIEWS.md`; la revue finale R17 n’a
+relevé aucun défaut matériel P0–P2. La PR #15 est intégrée sur `main` après CI verte. Ce travail
+ne remplace pas un audit externe des dépendances ou du fournisseur distant.
 
 **Aucune découverte justifiant de nouvelles permissions ou un paquet supplémentaire.** Les
 limites restent les providers configurés par l’utilisateur, le contenu web non fiable et les
