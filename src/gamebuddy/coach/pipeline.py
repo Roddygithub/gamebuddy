@@ -63,6 +63,7 @@ class CoachPipeline:
         self.game_title = game_title
         self._provider: LLMProvider | None = None
         self._thread: threading.Thread | None = None
+        self._tick_lock = threading.Lock()
         self._stop = threading.Event()
         self._last_hash: int | None = None
         self._last_saved_hash: int | None = None
@@ -141,6 +142,14 @@ class CoachPipeline:
 
     def tick(self, stop_event: threading.Event | None = None) -> Observation | None:
         stop_event = stop_event or self._stop
+        # A stopped tick may still be waiting for capture/provider I/O. Keep its
+        # shared hash and provider state from racing a newly started cycle.
+        with self._tick_lock:
+            if stop_event.is_set():
+                return None
+            return self._tick(stop_event)
+
+    def _tick(self, stop_event: threading.Event) -> Observation | None:
         ok, label = self.can_see()
         if not ok:
             if not self.needs_vision:  # say it once, not every interval
@@ -151,7 +160,7 @@ class CoachPipeline:
             return None
         started = time.monotonic()
         frame = self.capture()
-        if not frame:
+        if stop_event.is_set() or not frame:
             return None
         self.metrics["frames"] += 1
         self.metrics["last_frame_bytes"] = len(frame)
@@ -175,16 +184,19 @@ class CoachPipeline:
 
         # Mark only a frame that actually reaches the reasoner. A candidate that
         # arrives during cooldown must be retried once the cooldown expires.
-        self._last_hash = h
         eval_started = time.monotonic()
         obs = self.evaluate(frame)
         eval_ms = int((time.monotonic() - eval_started) * 1000)
+        if stop_event.is_set():
+            self._log_turn(capture_ms, eval_ms, 0, "cancelled")
+            return None
+        self._last_hash = h
         if obs is None:
             self._log_turn(capture_ms, eval_ms, 0, "rejected")
             return None
 
-        # Hold the advice until one cheap look confirms the window survived; a HUD
-        # flash or a transient tooltip never reaches the player.
+        # Hold the advice until one cheap look confirms the screen is still similar.
+        # This reduces transient advice; a perceptual hash is not a hard guarantee.
         self.store.log_coach("pre_gate", "await_stability", obs.advice, self.game_title)
         confirm_started = time.monotonic()
         stable = self._confirm(stop_event)

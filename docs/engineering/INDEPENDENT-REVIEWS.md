@@ -31,11 +31,28 @@
   à traiter: (1) le jeton TTS était encore créé dans le worker, donc une tâche déjà mise en
   file pouvait commencer après annulation; (2) un `start()` pendant que le thread stoppé est
   encore bloqué ne redémarrait pas le Coach.
-- Réponse en cours: le jeton TTS est maintenant assigné avant la mise en file, avec un test
-  annulant une réponse en attente; chaque cycle Coach possède son propre Event d’arrêt, ce qui
-  permet un redémarrage pendant que l’ancien tick se termine; un test bloque la première
-  capture puis vérifie le nouveau cycle. Sortie finale et résultat de la revue suivante à
-  ajouter avant PR.
+- Réponse: le jeton TTS est assigné avant la mise en file, avec un test annulant une réponse
+  en attente; chaque cycle Coach possède son propre Event d’arrêt et peut redémarrer pendant
+  que l’ancien tick se termine. Suite après ces deux correctifs: **205 tests passés**.
+
+## Revue 3 — isolation des cycles et état d’écoute
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; checkout `4a344c4`, diff inspecté
+  depuis `2a9cf0e`.
+- Findings: un ancien cycle stoppé pouvait encore modifier `_last_hash` ou lancer une
+  évaluation après une capture bloquée, en partageant cet état avec le nouveau cycle (**P1**);
+  une annulation TTS dans la transition vers `speaking` pouvait remettre le listener en pause
+  après l’annulation (**P2**). Le reviewer a aussi relevé un claim trop fort sur le rejet des
+  flashes HUD.
+- Réponse: les ticks sont maintenant sérialisés; le stop event propre au cycle est vérifié
+  après capture et évaluation; le hash n’est mémorisé qu’après une évaluation non annulée. Les
+  transitions de génération, état de lecture et pause du listener partagent le verrou speech.
+  La documentation décrit le dHash comme filtre approximatif sans garantie sur les flashes.
+- Tests ajoutés: ancien cycle arrêté pendant capture puis nouveau cycle vérifié sans appel
+  raisonneur provenant de l’ancien; annulation pendant la transition speech. `uv run pytest -q`
+  passe maintenant **206 tests**; Ruff, format, syntaxe shell et diff-check passent.
+- Résultat: ces deux findings et le claim ont reçu une réponse; **nouvelle revue indépendante
+  obligatoire avant PR** pour vérifier les corrections et l’absence de finding résiduel.
 
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 

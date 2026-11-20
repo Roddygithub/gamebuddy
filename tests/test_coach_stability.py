@@ -196,11 +196,13 @@ def test_stop_during_confirmation_prevents_advice_delivery(tmp_path):
 
 
 def test_coach_restarts_while_stopped_capture_finishes(tmp_path):
-    pipeline, _advice, _store = _build(tmp_path, [], [])
+    pipeline, advice, _store = _build(tmp_path, [SHOP], [])
     pipeline.cfg.coach.interval_s = 0.01
+    pipeline.cfg.coach.confirm_poll_s = 0.0
     first_capture = threading.Event()
     release_first = threading.Event()
     restarted = threading.Event()
+    advised = threading.Event()
     count = [0]
 
     def capture():
@@ -208,11 +210,20 @@ def test_coach_restarts_while_stopped_capture_finishes(tmp_path):
         if count[0] == 1:
             first_capture.set()
             assert release_first.wait(2)
-        else:
+            return OTHER_FRAME
+        if count[0] == 2:
             restarted.set()
-        return None
+        return SHOP_FRAME
 
     pipeline.capture = capture
+    pipeline.capture_fresh = capture
+    original_advice = pipeline.on_advice
+
+    def on_advice(obs):
+        original_advice(obs)
+        advised.set()
+
+    pipeline.on_advice = on_advice
     pipeline.start()
     old_thread = pipeline._thread
     assert first_capture.wait(2)
@@ -220,15 +231,17 @@ def test_coach_restarts_while_stopped_capture_finishes(tmp_path):
     pipeline.start()
     new_thread = pipeline._thread
     assert new_thread is not old_thread
-    assert restarted.wait(2)
-
-    pipeline.stop()
     release_first.set()
+    assert restarted.wait(2)
+    assert advised.wait(2)
+    pipeline.stop()
     old_thread.join(2)
     new_thread.join(2)
 
     assert not old_thread.is_alive()
     assert not new_thread.is_alive()
+    assert pipeline.metrics["reasoner_calls"] == 1
+    assert len(advice) == 1
 
 
 def test_a_text_only_model_never_gets_a_frame(tmp_path):

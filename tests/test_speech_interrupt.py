@@ -103,3 +103,43 @@ def test_cancelled_queued_reply_never_begins_synthesis(monkeypatch):
     queued.pop()()
 
     assert synthesized == []
+
+
+def test_cancel_during_speaking_transition_restores_listener_state(monkeypatch):
+    entered_set = threading.Event()
+    release_set = threading.Event()
+
+    class BlockingEvent(threading.Event):
+        def set(self):
+            entered_set.set()
+            assert release_set.wait(2)
+            super().set()
+
+    app = GameBuddyApp.__new__(GameBuddyApp)
+    app._speech_gen = 0
+    app._speech_lock = threading.Lock()
+    cancelled = threading.Event()
+    app._speech_cancelled = cancelled
+    app._speaking = BlockingEvent()
+    app._timings = {}
+    app.listener = SimpleNamespace(paused=False)
+    app.cfg = SimpleNamespace(audio=SimpleNamespace(output_device=""))
+    app.tr = SimpleNamespace(language="en")
+    app.bridge = SimpleNamespace(status=SimpleNamespace(emit=lambda _status: None))
+    monkeypatch.setattr(tts, "synthesize", lambda *_args: (b"audio", "wav"))
+    monkeypatch.setattr(player, "play", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(player, "stop", lambda: None)
+
+    worker = threading.Thread(target=app._speak, args=("Reply.", 0, cancelled))
+    worker.start()
+    assert entered_set.wait(2)
+    cancel = threading.Thread(target=app._cancel_speech)
+    cancel.start()
+    release_set.set()
+    worker.join(2)
+    cancel.join(2)
+
+    assert not worker.is_alive()
+    assert not cancel.is_alive()
+    assert not app.listener.paused
+    assert not app._speaking.is_set()

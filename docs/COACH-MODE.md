@@ -21,10 +21,10 @@ capture (JPEG of the game window)
       at least one evidence item; no critical unknown field (owner, hp, gold, cost, cooldown, timer…)
       advice must name a specific option from the structured state (not just "buy")
       not ≥ 60 % similar to the previous advice
-  → stability confirmation       (one re-capture at coach.confirm_poll_s: if the screen still
-                                  matches, the advice goes out at once; if it moved, it is dropped.
-                                  A HUD flash never lands, and the check costs a capture instead of
-                                  a whole interval)
+  → stability confirmation       (one re-capture at coach.confirm_poll_s: the advice goes out
+                                  if the perceptual hash remains within its threshold; otherwise
+                                  it is dropped. This approximate filter reduces transient advice
+                                  but cannot guarantee that a HUD flash is rejected)
   → one line in the widget (optionally spoken)
 ```
 

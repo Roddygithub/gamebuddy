@@ -570,7 +570,7 @@ class GameBuddyApp(QObject):
             generation = self._speech_gen
             cancelled = threading.Event()
             self._speech_cancelled = cancelled
-        player.stop()
+            player.stop()
         self.pool.start(lambda: self._speak(text, generation, cancelled))
 
     def _speak(self, text: str, generation: int, cancelled: threading.Event) -> None:
@@ -581,12 +581,13 @@ class GameBuddyApp(QObject):
         chunks = split_sentences(text)
         if not chunks:
             return
-        if cancelled.is_set() or generation != self._speech_gen:
-            return
-        started = time.monotonic()
-        self._speaking.set()
-        if self.listener:
-            self.listener.paused = True
+        with self._speech_lock:
+            if cancelled.is_set() or generation != self._speech_gen:
+                return
+            started = time.monotonic()
+            self._speaking.set()
+            if self.listener:
+                self.listener.paused = True
         try:
             self.bridge.status.emit("speaking")
             for index, chunk in enumerate(chunks):
@@ -602,24 +603,25 @@ class GameBuddyApp(QObject):
         except Exception as exc:  # noqa: BLE001
             log.warning("tts failed: %s", exc)
         finally:
-            if generation == self._speech_gen:  # a newer reply owns the status now
-                self._speaking.clear()
-                if self.listener:
-                    self.listener.paused = False
-                self.bridge.status.emit("ready")
+            with self._speech_lock:
+                if generation == self._speech_gen:  # a newer reply owns the status now
+                    self._speaking.clear()
+                    if self.listener:
+                        self.listener.paused = False
+                    self.bridge.status.emit("ready")
 
     def _cancel_speech(self) -> None:
         """Stop active playback and prevent its worker from voicing later chunks."""
+        from gamebuddy.audio import player
+
         with self._speech_lock:
             self._speech_gen += 1
             if self._speech_cancelled:
                 self._speech_cancelled.set()
-        from gamebuddy.audio import player
-
-        player.stop()
-        self._speaking.clear()
-        if self.listener:
-            self.listener.paused = False
+            player.stop()
+            self._speaking.clear()
+            if self.listener:
+                self.listener.paused = False
 
     def _on_error(self, message: str) -> None:
         self.widget.end_stream("")
