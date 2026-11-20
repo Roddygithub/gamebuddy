@@ -469,10 +469,12 @@ class GameBuddyApp(QObject):
                 and (time.monotonic() - cached[0]) * 1000 < self.cfg.capture.reuse_ms
             )
         if reuse:
+            lookup_failed = False
             try:
                 current = self.backend.find_window(window.id)
             except Exception:  # noqa: BLE001 — stale frames fail closed
                 current = None
+                lookup_failed = True
             if current and (current.id, current.capture_id, current.app_id) == source:
                 with self._shot_lock:
                     if self.window is window and self._shot is cached:
@@ -481,29 +483,33 @@ class GameBuddyApp(QObject):
                 if self._shot is cached:
                     self._shot = None
             if not current or (current.id, current.capture_id, current.app_id) != source:
+                if not lookup_failed:
+                    self._notify_window_lost(window)
                 return None
         else:
             # Validate identity on fresh and expired-cache paths too. Backends
             # such as Hyprland may reuse a window address after replacement.
+            lookup_failed = False
             try:
                 current = self.backend.find_window(window.id)
             except Exception:  # noqa: BLE001 — stale frames fail closed
                 current = None
+                lookup_failed = True
             if not current or (current.id, current.capture_id, current.app_id) != source:
                 with self._shot_lock:
                     if self._shot is cached:
                         self._shot = None
+                if not lookup_failed:
+                    self._notify_window_lost(window)
                 return None
         try:
             png = self.backend.capture(window)
         except CaptureError as exc:
-            lost = False
             with self._shot_lock:
                 if self.window is window:
                     self._shot = None
-                    lost = str(exc) == "window_lost"
-            if lost:
-                self.bridge.window_lost.emit(*source)
+            if str(exc) == "window_lost":
+                self._notify_window_lost(window)
             else:
                 log.warning("capture failed: %s", exc)
             return None
@@ -528,6 +534,13 @@ class GameBuddyApp(QObject):
                 return None
             self._shot = (time.monotonic(), *source, jpeg)
         return jpeg
+
+    def _notify_window_lost(self, window: WindowInfo) -> None:
+        with self._shot_lock:
+            if self.window is not window:
+                return
+            self._shot = None
+        self.bridge.window_lost.emit(window.id, window.capture_id, window.app_id)
 
     def _on_window_lost(self, window_id: str, capture_id: str, app_id: str) -> None:
         with self._shot_lock:

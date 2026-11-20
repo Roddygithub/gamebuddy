@@ -5,6 +5,7 @@ import threading
 import time
 from types import SimpleNamespace
 
+import pytest
 from PIL import Image
 
 from gamebuddy.capture import Rect, WindowInfo
@@ -44,6 +45,7 @@ def _app(window: WindowInfo) -> GameBuddyApp:
     app.window = window
     app.cfg = SimpleNamespace(capture=CaptureConfig(reuse_ms=250))
     app.backend = _Backend(window)
+    app.bridge = SimpleNamespace(window_lost=SimpleNamespace(emit=lambda *_args: None))
     app._overlay_rect = lambda: None
     return app
 
@@ -123,4 +125,34 @@ def test_window_lost_during_old_capture_does_not_emit_for_new_selection():
 
     assert app.capture_game(fresh=True) is None
     assert app.window is other
+    assert emitted == []
+
+
+@pytest.mark.parametrize("fresh,cached", [(True, False), (False, True)])
+def test_missing_selected_window_notifies_loss_before_capture(fresh, cached):
+    selected = WindowInfo("1", "Game", "game", Rect(0, 0, 32, 32), capture_id="stable")
+    app = _app(selected)
+    emitted = []
+    app.backend.current = None
+    app.bridge.window_lost.emit = lambda *identity: emitted.append(identity)
+    if cached:
+        app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"cached")
+
+    assert app.capture_game(fresh=fresh) is None
+    assert emitted == [(selected.id, selected.capture_id, selected.app_id)]
+    assert app._shot is None
+
+
+def test_temporary_identity_lookup_error_does_not_report_window_lost():
+    selected = WindowInfo("1", "Game", "game", Rect(0, 0, 32, 32), capture_id="stable")
+    app = _app(selected)
+    emitted = []
+    app.bridge.window_lost.emit = lambda *identity: emitted.append(identity)
+
+    def fail(_window_id):
+        raise RuntimeError("hyprctl unavailable")
+
+    app.backend.find_window = fail
+
+    assert app.capture_game(fresh=True) is None
     assert emitted == []

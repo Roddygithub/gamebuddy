@@ -30,7 +30,8 @@ de cette mission. Une capture live du jeu n’a pas été exécutée.
 - `tests/test_capture_cache.py`: adresse Hyprland réutilisée avec un autre `stableId`
   échoue fermé sans cache, avec cache expiré ou sur le cache valide; changement de
   sélection pendant l’acquisition ne renvoie pas la frame; une notification de perte
-  retardée ne détruit pas la nouvelle sélection.
+  retardée ne détruit pas la nouvelle sélection; une source absente est signalée après un
+  lookup concluant, mais une erreur transitoire de lookup n’efface pas le titre.
 - `tests/test_observer_capture.py`: préserve l’image ultra-large sans plafond et vérifie
   qu’une image haute entropie respecte le budget; refuse un budget trop petit pour un JPEG.
 - `tests/test_coach_stability.py`: une frame changée pendant la confirmation ne produit

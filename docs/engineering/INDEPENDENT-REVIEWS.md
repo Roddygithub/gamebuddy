@@ -130,6 +130,19 @@
   périmée avant/après capture. `uv run pytest -q`: **220 passed**; Ruff, format, shell syntax
   et diff-check passent. Revue indépendante de suivi nécessaire avant PR.
 
+## Revue 9 — perte de fenêtre déjà disparue
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `71dee70`.
+- Finding: les validations identité préalables retournaient `None` sans notifier l’UI quand
+  `find_window` indiquait que la source a disparu; titre/choix restaient périmés (**P2**).
+- Réponse: les deux chemins émettent maintenant un événement de perte identifiant si le
+  lookup conclut à une source manquante ou remplacée; une exception de lookup (panne
+  temporaire) invalide le cache mais ne supprime pas la sélection. Le slot vérifie encore
+  l’identité courante au traitement du signal.
+- Tests: source déjà absente avec et sans cache; erreur de lookup sans notification; sélection
+  différente préservée. Suite après correction: **223 passed**; Ruff, format, shell syntax et
+  diff-check passent. Nouvelle revue indépendante requise avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans
