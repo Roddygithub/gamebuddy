@@ -74,7 +74,7 @@ class CoachPipeline:
         self._last_saved_hash: int | None = None
         self._last_advice = ""
         self._last_advice_context: int | None = None
-        self._last_advice_at = 0.0
+        self._last_advice_at: float | None = None
         self._delivery_lock = threading.Lock()
         self._next_due = 0.0
         self.paused = False
@@ -192,7 +192,9 @@ class CoachPipeline:
         if self.cfg.coach.save_frames and self._last_saved_hash != h:
             self._save_frame(frame)
             self._last_saved_hash = h
-        if time.monotonic() - self._last_advice_at < self.cfg.coach.cooldown_s:
+        if self._last_advice_at is not None and (
+            time.monotonic() - self._last_advice_at < self.cfg.coach.cooldown_s
+        ):
             self.store.log_coach("pre_gate", "cooldown", "", self.game_title)
             return None
 

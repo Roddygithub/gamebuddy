@@ -158,6 +158,18 @@ def test_cooldown_uses_monotonic_clock_and_retries_new_candidate(tmp_path, monke
     assert [item.advice for item in advice] == [SHOP["advice"], second["advice"]]
 
 
+def test_first_advice_is_not_blocked_by_short_system_uptime(tmp_path, monkeypatch):
+    import gamebuddy.coach.pipeline as module
+
+    monkeypatch.setattr(module.time, "monotonic", lambda: 5.0)
+    pipeline, advice, _ = _build(tmp_path, [SHOP], [SHOP_FRAME, SHOP_FRAME])
+
+    pipeline.tick()
+
+    assert pipeline.metrics["reasoner_calls"] == 1
+    assert [item.advice for item in advice] == [SHOP["advice"]]
+
+
 def test_changed_confirmation_frame_is_evaluated_on_next_tick(tmp_path):
     pipeline, advice, _ = _build(
         tmp_path,

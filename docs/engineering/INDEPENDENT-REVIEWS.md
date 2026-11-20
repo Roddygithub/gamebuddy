@@ -240,6 +240,21 @@
   Coach, UI, IPC et TTS; `git diff --check`. Il n'a exécuté ni tests ni linters, ni lancé de
   jeu, ni accédé au réseau.
 
+## Revue 17 — premier conseil sur un runner fraîchement démarré
+
+- Détecté par CI après la revue 16: le job Python 3.11 a échoué sur les premiers conseils
+  Coach; Python 3.12 et le manifeste passaient. L'inspection du log a montré un runner démarré
+  depuis moins de 60 secondes.
+- Cause: `_last_advice_at=0.0` était traité comme une vraie heure monotone; le garde cooldown
+  ignorait le premier conseil pendant les premières 60 secondes après le démarrage du système.
+- Réponse dans le diff en cours: l'horodatage est `None` avant toute livraison et le cooldown
+  n'est testé qu'après un premier conseil; test simulant monotonic=5s. Suite locale sur Python
+  3.11, avec et sans `QT_QPA_PLATFORM=offscreen`: **234 passed** dans chaque run.
+- Relecteur: GPT-6.1 Terra, reasoning medium, lecture seule; il a confirmé la sentinelle,
+  l'horodatage monotone et la reprise d'un candidat après cooldown. Aucun finding P0–P2.
+- Vérifications complètes locales: **234 tests**; Ruff check/format, shell syntax et
+  diff-check passent. La relance GitHub après push reste requise.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans
