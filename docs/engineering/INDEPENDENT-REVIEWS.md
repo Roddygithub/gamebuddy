@@ -102,6 +102,20 @@
   à HEAD 58ab0ae: **214 passed**; Ruff, format, shell syntax et diff-check passent. Revue de
   suivi requise avant PR.
 
+## Revue 7 — voix Coach et protocole d’abonnement
+
+- Relecteur: GPT-6.1 Terra, reasoning high, statique en lecture seule; HEAD `841152d`.
+- Findings: un worker voix ou un signal UI Coach déjà mis en file pouvait survivre à l’arrêt
+  (**P2**); l’accusé subscribe partageait la socket avec les broadcasts avant d’être envoyé
+  (**P2**).
+- Réponse: la voix Coach porte génération Coach et source, est annulée à la désactivation sans
+  toucher une réponse ASK; le signal UI porte aussi la génération et l’UI le filtre. L’accusé
+  IPC est écrit avant d’ajouter le subscriber, sous son verrou d’envoi; les broadcasts ne le
+  voient donc qu’après l’ACK.
+- Tests ajoutés: voix Coach en file puis stop, signal Qt ancien après stop, ACK et broadcast
+  concurrents sur le subscriber. Vérification locale: **217 tests passent**; Ruff, format,
+  shell syntax et diff-check passent. Revue de suivi requise avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans

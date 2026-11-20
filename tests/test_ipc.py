@@ -183,6 +183,48 @@ def test_concurrent_broadcasts_are_serialized_per_subscriber(tmp_path):
     assert [json.loads(line)["event"] for line in received] == ["first", "second"]
 
 
+def test_subscribe_ack_precedes_any_broadcast(tmp_path):
+    import threading
+
+    ack_started = threading.Event()
+    release_ack = threading.Event()
+    sent = []
+
+    class Subscriber:
+        def settimeout(self, _seconds):
+            pass
+
+        def recv(self, _size):
+            return b'{"cmd":"subscribe"}\n'
+
+        def sendall(self, line):
+            if b"subscribed" in line:
+                ack_started.set()
+                assert release_ack.wait(2)
+            sent.append(line)
+
+        def close(self):
+            pass
+
+        def shutdown(self, _how):
+            pass
+
+    srv = IPCServer(lambda _request: {"ok": True}, tmp_path / "ipc.sock")
+    subscriber = Subscriber()
+    srv._handle_thread = threading.Thread(target=srv._handle, args=(subscriber,))
+    srv._handle_thread.start()
+    assert ack_started.wait(2)
+    srv.broadcast("coach", advice="early")
+    release_ack.set()
+    srv._handle_thread.join(2)
+    srv.broadcast("coach", advice="after ack")
+
+    assert not srv._handle_thread.is_alive()
+    assert sent[0] == b'{"ok": true, "subscribed": true}\n'
+    assert b'"after ack"' in sent[1]
+    srv.stop()
+
+
 def test_stopping_rejected_instance_preserves_active_socket():
     import pytest
 

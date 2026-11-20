@@ -91,6 +91,7 @@ class GameBuddyApp(QObject):
         self._speech_gen = 0  # bumped by each reply, so an older one stops talking
         self._speech_lock = threading.Lock()
         self._speech_cancelled: threading.Event | None = None
+        self._speech_source = ""
 
         self.kin = Kin(self.cfg, self.store, self._kin_callbacks())
         self.kin.language = self.tr.language
@@ -176,7 +177,7 @@ class GameBuddyApp(QObject):
         b.error.connect(self._on_error)
         b.update_available.connect(self._on_update_available)
         b.level.connect(w.set_level)
-        b.coach_advice.connect(w.add_coach)
+        b.coach_advice.connect(self._show_coach_advice)
         b.command.connect(self._handle_command_gui)
         b.window_lost.connect(self._on_window_lost)
         b.memory.connect(lambda _n: w.set_status("ready"))
@@ -562,10 +563,14 @@ class GameBuddyApp(QObject):
         if text.strip() and self.cfg.speech.speak_replies and self.cfg.speech.tts != "none":
             self._queue_speech(text)
 
-    def _queue_speech(self, text: str) -> None:
+    def _queue_speech(self, text: str, *, coach_generation: int | None = None) -> None:
         """Assign cancellation before a worker can wait in the thread-pool queue."""
         from gamebuddy.audio import player
 
+        if coach_generation is not None:
+            with self._coach_lock:
+                if not self._coach_enabled or coach_generation != self._coach_generation:
+                    return
         with self._speech_lock:
             if self._speech_cancelled:
                 self._speech_cancelled.set()
@@ -573,10 +578,17 @@ class GameBuddyApp(QObject):
             generation = self._speech_gen
             cancelled = threading.Event()
             self._speech_cancelled = cancelled
+            self._speech_source = "coach" if coach_generation is not None else "reply"
             player.stop()
-        self.pool.start(lambda: self._speak(text, generation, cancelled))
+        self.pool.start(lambda: self._speak(text, generation, cancelled, coach_generation))
 
-    def _speak(self, text: str, generation: int, cancelled: threading.Event) -> None:
+    def _speak(
+        self,
+        text: str,
+        generation: int,
+        cancelled: threading.Event,
+        coach_generation: int | None = None,
+    ) -> None:
         """Synthesize sentence by sentence and stop promptly when superseded."""
         from gamebuddy.audio import player
         from gamebuddy.speech.tts import split_sentences, synthesize
@@ -584,8 +596,15 @@ class GameBuddyApp(QObject):
         chunks = split_sentences(text)
         if not chunks:
             return
+
+        def coach_current() -> bool:
+            if coach_generation is None:
+                return True
+            with self._coach_lock:
+                return self._coach_enabled and coach_generation == self._coach_generation
+
         with self._speech_lock:
-            if cancelled.is_set() or generation != self._speech_gen:
+            if cancelled.is_set() or generation != self._speech_gen or not coach_current():
                 return
             started = time.monotonic()
             self._speaking.set()
@@ -594,12 +613,12 @@ class GameBuddyApp(QObject):
         try:
             self.bridge.status.emit("speaking")
             for index, chunk in enumerate(chunks):
-                if cancelled.is_set() or generation != self._speech_gen:
+                if cancelled.is_set() or generation != self._speech_gen or not coach_current():
                     return
                 audio, fmt = synthesize(chunk, self.cfg, self.tr.language)
                 if index == 0:
                     self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
-                if cancelled.is_set() or generation != self._speech_gen:
+                if cancelled.is_set() or generation != self._speech_gen or not coach_current():
                     return
                 if audio:
                     player.play(audio, fmt, self.cfg.audio.output_device, cancelled)
@@ -609,6 +628,7 @@ class GameBuddyApp(QObject):
             with self._speech_lock:
                 if generation == self._speech_gen:  # a newer reply owns the status now
                     self._speaking.clear()
+                    self._speech_source = ""
                     if self.listener:
                         self.listener.paused = False
                     self.bridge.status.emit("ready")
@@ -621,6 +641,23 @@ class GameBuddyApp(QObject):
             self._speech_gen += 1
             if self._speech_cancelled:
                 self._speech_cancelled.set()
+            self._speech_source = ""
+            player.stop()
+            self._speaking.clear()
+            if self.listener:
+                self.listener.paused = False
+
+    def _cancel_coach_speech(self) -> None:
+        """Stop only Coach audio when Coach is disabled; keep ASK replies intact."""
+        from gamebuddy.audio import player
+
+        with self._speech_lock:
+            if self._speech_source != "coach":
+                return
+            self._speech_gen += 1
+            if self._speech_cancelled:
+                self._speech_cancelled.set()
+            self._speech_source = ""
             player.stop()
             self._speaking.clear()
             if self.listener:
@@ -765,6 +802,7 @@ class GameBuddyApp(QObject):
                 if self._coach_enabled:
                     self._coach_generation += 1
                 self._coach_enabled = False
+            self._cancel_coach_speech()
             if self.coach:
                 self.coach.stop()
         self.widget.set_coach(on)
@@ -772,11 +810,11 @@ class GameBuddyApp(QObject):
         QTimer.singleShot(1500, lambda: self.widget.set_status("ready"))
 
     def _on_coach_advice(self, obs: Observation) -> None:
-        self.bridge.coach_advice.emit(obs.advice, obs.rationale)
+        with self._coach_lock:
+            generation = self._coach_generation
+        self.bridge.coach_advice.emit(obs.advice, obs.rationale, generation)
         if self.ipc:
             ipc = self.ipc
-            with self._coach_lock:
-                generation = self._coach_generation
 
             def still_current() -> bool:
                 with self._coach_lock:
@@ -787,7 +825,13 @@ class GameBuddyApp(QObject):
 
             self.pool.start(broadcast_if_current)
         if self.cfg.coach.speak:
-            self._queue_speech(obs.advice)
+            self._queue_speech(obs.advice, coach_generation=generation)
+
+    def _show_coach_advice(self, advice: str, rationale: str, generation: int) -> None:
+        with self._coach_lock:
+            current = self._coach_enabled and generation == self._coach_generation
+        if current:
+            self.widget.add_coach(advice, rationale)
 
     # ---- misc ----------------------------------------------------------------
     def unpin(self) -> None:

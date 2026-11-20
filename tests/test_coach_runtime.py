@@ -10,7 +10,10 @@ def test_coach_voice_uses_queued_speech_lifecycle():
     app.bridge = SimpleNamespace(coach_advice=SimpleNamespace(emit=lambda *_args: None))
     app.ipc = None
     app.cfg = SimpleNamespace(coach=SimpleNamespace(speak=True))
-    app._queue_speech = spoken.append
+    app._coach_enabled = True
+    app._coach_generation = 1
+    app._coach_lock = threading.Lock()
+    app._queue_speech = lambda text, **_kwargs: spoken.append(text)
 
     app._on_coach_advice(SimpleNamespace(advice="Buy Slark", rationale="shop open"))
 
@@ -66,7 +69,7 @@ def test_slow_ipc_broadcast_is_queued_outside_coach_delivery():
     app._coach_enabled = True
     app._coach_generation = 1
     app._coach_lock = threading.Lock()
-    app._queue_speech = spoken.append
+    app._queue_speech = lambda text, **_kwargs: spoken.append(text)
 
     app._on_coach_advice(SimpleNamespace(advice="Buy Slark", rationale="shop open"))
     assert len(tasks) == 1
@@ -103,3 +106,50 @@ def test_queued_ipc_advice_is_discarded_after_coach_stops():
     tasks.pop()()
 
     assert sent == []
+
+
+def test_queued_coach_speech_is_cancelled_when_coach_stops(monkeypatch):
+    from gamebuddy.audio import player
+    from gamebuddy.speech import tts
+
+    app = GameBuddyApp.__new__(GameBuddyApp)
+    tasks = []
+    synthesized = []
+    app._coach_enabled = True
+    app._coach_generation = 1
+    app._coach_lock = threading.Lock()
+    app._speech_gen = 0
+    app._speech_lock = threading.Lock()
+    app._speech_cancelled = None
+    app._speech_source = ""
+    app._speaking = threading.Event()
+    app.listener = None
+    app.pool = SimpleNamespace(start=tasks.append)
+    app.cfg = SimpleNamespace(audio=SimpleNamespace(output_device=""))
+    app.tr = SimpleNamespace(language="fr")
+    app._timings = {}
+    app.bridge = SimpleNamespace(status=SimpleNamespace(emit=lambda _status: None))
+    monkeypatch.setattr(player, "stop", lambda: None)
+    monkeypatch.setattr(tts, "synthesize", lambda *_args: synthesized.append(True) or (b"audio", "wav"))
+
+    app._queue_speech("Coach advice", coach_generation=1)
+    with app._coach_lock:
+        app._coach_enabled = False
+        app._coach_generation = 2
+    app._cancel_coach_speech()
+    tasks.pop()()
+
+    assert synthesized == []
+
+
+def test_queued_ui_advice_is_dropped_after_coach_stops():
+    app = GameBuddyApp.__new__(GameBuddyApp)
+    displayed = []
+    app._coach_enabled = False
+    app._coach_generation = 2
+    app._coach_lock = threading.Lock()
+    app.widget = SimpleNamespace(add_coach=lambda *args: displayed.append(args))
+
+    app._show_coach_advice("stale", "old", 1)
+
+    assert displayed == []

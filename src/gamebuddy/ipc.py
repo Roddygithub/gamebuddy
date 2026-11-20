@@ -149,10 +149,14 @@ class IPCServer:
                         continue
                     if req.get("cmd") == "subscribe":
                         # A slow subscriber must not block broadcast (or shutdown) forever.
-                        with self._lock:
-                            self._subscribers.append(conn)
-                            self._send_locks[conn] = threading.Lock()
-                        conn.sendall(b'{"ok": true, "subscribed": true}\n')
+                        send_lock = threading.Lock()
+                        with send_lock:
+                            conn.sendall(b'{"ok": true, "subscribed": true}\n')
+                            with self._lock:
+                                if self._stop.is_set():
+                                    return
+                                self._subscribers.append(conn)
+                                self._send_locks[conn] = send_lock
                         return  # keep socket open for events; owned by subscribers list
                     try:
                         resp = self.handler(req)

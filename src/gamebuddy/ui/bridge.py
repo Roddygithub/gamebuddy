@@ -16,7 +16,7 @@ class Bridge(QObject):
     memory = Signal(str)
     error = Signal(str)
     level = Signal(float)
-    coach_advice = Signal(str, str)  # advice, rationale
+    coach_advice = Signal(str, str, int)  # advice, rationale, coach generation
     command = Signal(dict)  # IPC request to execute on the GUI thread
     window_lost = Signal()
     tool = Signal(str)
