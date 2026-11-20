@@ -142,6 +142,41 @@ def test_queued_coach_speech_is_cancelled_when_coach_stops(monkeypatch):
     assert synthesized == []
 
 
+def test_stopping_coach_does_not_cancel_an_ask_voice_during_queue_race(monkeypatch):
+    from gamebuddy.audio import player
+
+    app = GameBuddyApp.__new__(GameBuddyApp)
+    app._coach_enabled = True
+    app._coach_generation = 1
+    app._coach_lock = threading.Lock()
+    app._speech_gen = 4
+    app._speech_lock = threading.Lock()
+    app._speech_cancelled = threading.Event()
+    app._speech_source = "reply"
+    app._speaking = threading.Event()
+    app.listener = None
+    app.pool = SimpleNamespace(start=lambda _work: None)
+    stopped = []
+    monkeypatch.setattr(player, "stop", lambda: stopped.append(True))
+
+    app._speech_lock.acquire()
+    worker = threading.Thread(target=lambda: app._queue_speech("Coach", coach_generation=1))
+    worker.start()
+    with app._coach_lock:
+        app._coach_enabled = False
+        app._coach_generation = 2
+    off = threading.Thread(target=app._cancel_coach_speech)
+    off.start()
+    app._speech_lock.release()
+    worker.join(2)
+    off.join(2)
+
+    assert not worker.is_alive() and not off.is_alive()
+    assert app._speech_source == "reply"
+    assert app._speech_gen == 4
+    assert stopped == []
+
+
 def test_queued_ui_advice_is_dropped_after_coach_stops():
     app = GameBuddyApp.__new__(GameBuddyApp)
     displayed = []

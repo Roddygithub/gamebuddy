@@ -20,7 +20,7 @@ rapporté. Tests du pipeline actuels: persistance d’un shop, disparition d’u
 absence de vision, frame vide, répétition et timing. Ils utilisent des fournisseurs/fenêtres
 simulés. Le dataset livré n’a que deux exemples synthétiques.
 
-Après corrections des cycles de revue Terra, `uv run pytest -q` passe 217 tests; cela
+Après corrections des cycles de revue Terra, `uv run pytest -q` passe 220 tests; cela
 valide le code et les régressions déterministes, pas la valeur du conseil en partie. Un passage live du
 harness le 20 novembre 2026 sur les deux cas synthétiques a obtenu 1/2: abstention correcte
 sur le cas ambigu, mais abstention sur le shop où le corpus attend un conseil. Ce résultat

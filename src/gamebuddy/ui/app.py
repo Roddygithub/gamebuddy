@@ -497,11 +497,13 @@ class GameBuddyApp(QObject):
         try:
             png = self.backend.capture(window)
         except CaptureError as exc:
+            lost = False
             with self._shot_lock:
                 if self.window is window:
                     self._shot = None
-            if str(exc) == "window_lost":
-                self.bridge.window_lost.emit()
+                    lost = str(exc) == "window_lost"
+            if lost:
+                self.bridge.window_lost.emit(*source)
             else:
                 log.warning("capture failed: %s", exc)
             return None
@@ -527,8 +529,14 @@ class GameBuddyApp(QObject):
             self._shot = (time.monotonic(), *source, jpeg)
         return jpeg
 
-    def _on_window_lost(self) -> None:
+    def _on_window_lost(self, window_id: str, capture_id: str, app_id: str) -> None:
         with self._shot_lock:
+            if not self.window or (self.window.id, self.window.capture_id, self.window.app_id) != (
+                window_id,
+                capture_id,
+                app_id,
+            ):
+                return
             self.window = None
             self._shot = None
         self.kin.game_title = ""
@@ -567,11 +575,11 @@ class GameBuddyApp(QObject):
         """Assign cancellation before a worker can wait in the thread-pool queue."""
         from gamebuddy.audio import player
 
-        if coach_generation is not None:
-            with self._coach_lock:
-                if not self._coach_enabled or coach_generation != self._coach_generation:
-                    return
         with self._speech_lock:
+            if coach_generation is not None:
+                with self._coach_lock:
+                    if not self._coach_enabled or coach_generation != self._coach_generation:
+                        return
             if self._speech_cancelled:
                 self._speech_cancelled.set()
             self._speech_gen += 1

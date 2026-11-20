@@ -116,6 +116,20 @@
   concurrents sur le subscriber. Vérification locale: **217 tests passent**; Ruff, format,
   shell syntax et diff-check passent. Revue de suivi requise avant PR.
 
+## Revue 8 — course ASK/Coach et sélection de fenêtre
+
+- Relecteur: GPT-6.1 Terra, reasoning high, statique en lecture seule; HEAD `83eb2dd`.
+- Findings: arrêt Coach pouvait entrer entre la validation du jeton et la mise en file de la
+  voix, interrompant une lecture ASK déjà active (**P2**); une erreur de capture de l’ancienne
+  fenêtre pouvait émettre un `window_lost` sans identité et effacer une sélection plus récente
+  via le signal Qt (**P2**).
+- Réponse: `_queue_speech` vérifie l’identité Coach sous le même verrou que la création du job;
+  `set_coach(False)` ne stoppe que la parole dont la source est Coach. `window_lost` porte
+  `(id, capture_id, app_id)` et le slot refuse d’effacer une cible différente.
+- Tests ajoutés pour la course ASK/Coach pendant désactivation et la notification de perte
+  périmée avant/après capture. `uv run pytest -q`: **220 passed**; Ruff, format, shell syntax
+  et diff-check passent. Revue indépendante de suivi nécessaire avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans

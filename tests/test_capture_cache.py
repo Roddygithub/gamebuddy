@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from PIL import Image
 
 from gamebuddy.capture import Rect, WindowInfo
+from gamebuddy.capture.base import CaptureError
 from gamebuddy.config import CaptureConfig
 from gamebuddy.ui.app import GameBuddyApp
 
@@ -92,3 +93,34 @@ def test_frame_is_discarded_if_selection_changes_during_capture():
 
     assert app.capture_game(fresh=True) is None
     assert app._shot is None
+
+
+def test_old_window_lost_notification_does_not_clear_new_selection():
+    selected = WindowInfo("1", "New game", "new", Rect(0, 0, 32, 32), capture_id="new")
+    app = GameBuddyApp.__new__(GameBuddyApp)
+    app._shot_lock = threading.Lock()
+    app.window = selected
+    app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"new frame")
+
+    app._on_window_lost("old", "old-capture", "old-app")
+
+    assert app.window is selected
+    assert app._shot[4] == b"new frame"
+
+
+def test_window_lost_during_old_capture_does_not_emit_for_new_selection():
+    selected = WindowInfo("1", "Old game", "old", Rect(0, 0, 32, 32), capture_id="old")
+    other = WindowInfo("2", "New game", "new", Rect(0, 0, 32, 32), capture_id="new")
+    app = _app(selected)
+    emitted = []
+    app.bridge = SimpleNamespace(window_lost=SimpleNamespace(emit=emitted.append))
+
+    def lost(_window):
+        app.window = other
+        raise CaptureError("window_lost")
+
+    app.backend.capture = lost
+
+    assert app.capture_game(fresh=True) is None
+    assert app.window is other
+    assert emitted == []
