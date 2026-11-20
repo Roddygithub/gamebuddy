@@ -78,6 +78,7 @@ class GameBuddyApp(QObject):
         self.recorder = None
         self.listener = None
         self.coach: CoachPipeline | None = None
+        self._coach_enabled = False
         self.ipc: IPCServer | None = None
         self.tray: QSystemTrayIcon | None = None
         self._speaking = threading.Event()
@@ -727,7 +728,7 @@ class GameBuddyApp(QObject):
 
     # ---- coach ---------------------------------------------------------------
     def toggle_coach(self) -> None:
-        self.set_coach(not (self.coach and self.coach.running))
+        self.set_coach(not self._coach_enabled)
 
     def set_coach(self, on: bool) -> None:
         if on:
@@ -753,6 +754,7 @@ class GameBuddyApp(QObject):
             self.coach.start()
         elif self.coach:
             self.coach.stop()
+        self._coach_enabled = on
         self.widget.set_coach(on)
         self.widget.set_status("coach_on" if on else "coach_off")
         QTimer.singleShot(1500, lambda: self.widget.set_status("ready"))
@@ -760,9 +762,10 @@ class GameBuddyApp(QObject):
     def _on_coach_advice(self, obs: Observation) -> None:
         self.bridge.coach_advice.emit(obs.advice, obs.rationale)
         if self.ipc:
-            self.ipc.broadcast("coach", advice=obs.advice)
+            ipc = self.ipc
+            self.pool.start(lambda: ipc.broadcast("coach", advice=obs.advice))
         if self.cfg.coach.speak:
-            self.pool.start(lambda: self._speak(obs.advice))
+            self._queue_speech(obs.advice)
 
     # ---- misc ----------------------------------------------------------------
     def unpin(self) -> None:
@@ -910,9 +913,7 @@ class GameBuddyApp(QObject):
                 action == "on" if action in ("on", "off") else not (self.listener and self.listener.active)
             )
         elif cmd == "coach":
-            self.set_coach(
-                action == "on" if action in ("on", "off") else not (self.coach and self.coach.running)
-            )
+            self.set_coach(action == "on" if action in ("on", "off") else not self._coach_enabled)
         elif cmd == "select_window":
             if not self.select_window_by_id(str(req.get("id", ""))):
                 self.pick_window()

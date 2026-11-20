@@ -54,6 +54,21 @@
 - Résultat: ces deux findings et le claim ont reçu une réponse; **nouvelle revue indépendante
   obligatoire avant PR** pour vérifier les corrections et l’absence de finding résiduel.
 
+## Revue 4 — voix Coach, toggles et callback IPC
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; checkout `3f73a40`, diff complet
+  depuis le SHA de main.
+- Findings: le callback voix Coach appelait `_speak` avec l’ancienne signature (**P1**);
+  toggle bouton/IPC se fondait sur `thread.is_alive()` et n’annulait pas un arrêt en cours
+  (**P2**); callback de livraison gardait son verrou pendant `sendall` IPC qui peut attendre
+  le timeout de chaque subscriber (**P2**).
+- Réponse dans le diff suivant: callback voix redirigé vers `_queue_speech`; état demandé du
+  Coach mémorisé dans `_coach_enabled`; diffusion IPC passée en tâche thread-pool, hors du
+  verrou de livraison. Trois tests vérifient ces chemins, dont un broadcast bloquant.
+- Contrôles locaux après les corrections: `uv run pytest -q` **209 passed**; Ruff, format,
+  `bash -n install.sh` et `git diff --check` passent. Le reviewer n’a pas exécuté les tests.
+- Statut: en attente d’une nouvelle lecture indépendante de ces corrections avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans
