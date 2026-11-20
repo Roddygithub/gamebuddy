@@ -65,12 +65,16 @@ class IPCServer:
             except OSError:
                 pass
         with self._lock:
-            for s in self._subscribers:
-                try:
-                    s.close()
-                except OSError:
-                    pass
-            self._subscribers.clear()
+            subscribers, self._subscribers = self._subscribers, []
+        for s in subscribers:
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                s.close()
+            except OSError:
+                pass
         try:
             if self._bound and self.path.exists():
                 self.path.unlink()
@@ -84,14 +88,18 @@ class IPCServer:
     def broadcast(self, event: str, **payload: Any) -> None:
         line = (json.dumps({"event": event, **payload}) + "\n").encode()
         with self._lock:
-            dead = []
-            for s in self._subscribers:
-                try:
-                    s.sendall(line)
-                except OSError:
-                    dead.append(s)
-            for s in dead:
-                self._subscribers.remove(s)
+            subscribers = tuple(self._subscribers)
+        dead = []
+        for s in subscribers:
+            try:
+                s.sendall(line)
+            except OSError:
+                dead.append(s)
+        if dead:
+            with self._lock:
+                for s in dead:
+                    if s in self._subscribers:
+                        self._subscribers.remove(s)
 
     # ---- internals -------------------------------------------------------
     def _serve(self) -> None:

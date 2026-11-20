@@ -82,6 +82,36 @@ def test_invalid_requests_do_not_disconnect_client():
         srv.stop()
 
 
+def test_slow_subscriber_does_not_hold_shutdown_lock(tmp_path):
+    import threading
+
+    entered = threading.Event()
+    stopped = threading.Event()
+
+    class SlowSubscriber:
+        def sendall(self, _line):
+            entered.set()
+            assert stopped.wait(2)
+            raise OSError("closed")
+
+        def shutdown(self, _how):
+            stopped.set()
+
+        def close(self):
+            stopped.set()
+
+    srv = IPCServer(lambda _request: {"ok": True}, tmp_path / "ipc.sock")
+    srv._subscribers.append(SlowSubscriber())
+    worker = threading.Thread(target=srv.broadcast, args=("coach",), kwargs={"advice": "test"})
+    worker.start()
+    assert entered.wait(2)
+
+    srv.stop()
+    worker.join(2)
+
+    assert not worker.is_alive()
+
+
 def test_stopping_rejected_instance_preserves_active_socket():
     import pytest
 

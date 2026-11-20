@@ -69,6 +69,23 @@
   `bash -n install.sh` et `git diff --check` passent. Le reviewer n’a pas exécuté les tests.
 - Statut: en attente d’une nouvelle lecture indépendante de ces corrections avant PR.
 
+## Revue 5 — cycle IPC, arrêt et état de statut
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; checkout `93703a3`, diff depuis
+  le SHA de main. Pas de test exécuté par le reviewer; il a inspecté statiquement les tests.
+- Findings: conseil IPC mis en file pouvait être diffusé après désactivation (P2); fermeture
+  de l’application pouvait attendre le verrou tenu par un `sendall` bloqué (P2); snapshot
+  indiquait `coach=true` sur un thread qui finissait après stop.
+- Réponse dans le diff courant: generation + état demandé sous `_coach_lock`, chaque worker
+  IPC valide la generation avant envoi; `IPCServer.broadcast()` envoie sur un snapshot sans
+  tenir le verrou global, et `stop()` retire les abonnés puis `shutdown`/ferme les sockets;
+  `status_snapshot` expose l’état demandé.
+- Tests ajoutés: annulation de broadcast mis en file après stop, broadcast d’abonné bloquant
+  libéré à l’arrêt, snapshot false quand le thread unwind est toujours vivant.
+- Vérification locale après corrections: 212 tests passent; Ruff, format, shell syntax et
+  `git diff --check` passent. **Revue de suivi requise avant PR**, les nouveaux changements
+  n’ont pas encore été inspectés indépendamment.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans

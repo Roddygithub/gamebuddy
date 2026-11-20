@@ -79,6 +79,8 @@ class GameBuddyApp(QObject):
         self.listener = None
         self.coach: CoachPipeline | None = None
         self._coach_enabled = False
+        self._coach_generation = 0
+        self._coach_lock = threading.Lock()
         self.ipc: IPCServer | None = None
         self.tray: QSystemTrayIcon | None = None
         self._speaking = threading.Event()
@@ -728,7 +730,9 @@ class GameBuddyApp(QObject):
 
     # ---- coach ---------------------------------------------------------------
     def toggle_coach(self) -> None:
-        self.set_coach(not self._coach_enabled)
+        with self._coach_lock:
+            enabled = self._coach_enabled
+        self.set_coach(not enabled)
 
     def set_coach(self, on: bool) -> None:
         if on:
@@ -752,9 +756,17 @@ class GameBuddyApp(QObject):
                 self.widget.add_error(self.tr("coach_needs_vision", model=label))
                 return
             self.coach.start()
-        elif self.coach:
-            self.coach.stop()
-        self._coach_enabled = on
+            with self._coach_lock:
+                if not self._coach_enabled:
+                    self._coach_generation += 1
+                self._coach_enabled = True
+        else:
+            with self._coach_lock:
+                if self._coach_enabled:
+                    self._coach_generation += 1
+                self._coach_enabled = False
+            if self.coach:
+                self.coach.stop()
         self.widget.set_coach(on)
         self.widget.set_status("coach_on" if on else "coach_off")
         QTimer.singleShot(1500, lambda: self.widget.set_status("ready"))
@@ -763,7 +775,16 @@ class GameBuddyApp(QObject):
         self.bridge.coach_advice.emit(obs.advice, obs.rationale)
         if self.ipc:
             ipc = self.ipc
-            self.pool.start(lambda: ipc.broadcast("coach", advice=obs.advice))
+            with self._coach_lock:
+                generation = self._coach_generation
+
+            def broadcast_if_current() -> None:
+                with self._coach_lock:
+                    if not self._coach_enabled or generation != self._coach_generation:
+                        return
+                ipc.broadcast("coach", advice=obs.advice)
+
+            self.pool.start(broadcast_if_current)
         if self.cfg.coach.speak:
             self._queue_speech(obs.advice)
 
@@ -839,6 +860,8 @@ class GameBuddyApp(QObject):
 
     # ---- IPC -----------------------------------------------------------------
     def status_snapshot(self) -> dict[str, Any]:
+        with self._coach_lock:
+            coach_enabled = self._coach_enabled
         return {
             "ok": True,
             "visible": self.widget.isVisible(),
@@ -847,7 +870,7 @@ class GameBuddyApp(QObject):
             "recording": bool(self.recorder and self.recorder.recording),
             "hands_free": bool(self.listener and self.listener.active),
             "dropped_utterances": self.listener.dropped if self.listener else 0,
-            "coach": bool(self.coach and self.coach.running),
+            "coach": coach_enabled,
             "coach_turn": dict(self.coach.metrics["last_turn"]) if self.coach else {},
             "busy": self.kin.busy,
             "backend": self.backend.name,
