@@ -1,0 +1,80 @@
+"""A cached frame must remain bound to the selected window identity."""
+
+import io
+import threading
+import time
+from types import SimpleNamespace
+
+from PIL import Image
+
+from gamebuddy.capture import Rect, WindowInfo
+from gamebuddy.config import CaptureConfig
+from gamebuddy.ui.app import GameBuddyApp
+
+
+def _png(color: tuple[int, int, int]) -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", (32, 32), color).save(out, "PNG")
+    return out.getvalue()
+
+
+class _Backend:
+    name = "hyprland"
+
+    def __init__(self, current: WindowInfo):
+        self.current = current
+        self.captures = 0
+        self.on_capture = None
+
+    def find_window(self, _window_id: str) -> WindowInfo | None:
+        return self.current
+
+    def capture(self, window: WindowInfo) -> bytes:
+        self.captures += 1
+        if self.on_capture:
+            self.on_capture()
+        return _png((20, 30, 40))
+
+
+def _app(window: WindowInfo) -> GameBuddyApp:
+    app = GameBuddyApp.__new__(GameBuddyApp)
+    app._shot_lock = threading.Lock()
+    app._shot = None
+    app.window = window
+    app.cfg = SimpleNamespace(capture=CaptureConfig(reuse_ms=250))
+    app.backend = _Backend(window)
+    app._overlay_rect = lambda: None
+    return app
+
+
+def test_reused_hyprland_address_fails_closed_when_toplevel_changes():
+    selected = WindowInfo("0x123", "Game", "game", Rect(0, 0, 32, 32), capture_id="old")
+    replacement = WindowInfo("0x123", "Game", "game", Rect(0, 0, 32, 32), capture_id="new")
+    app = _app(selected)
+    app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"old frame")
+    app.backend.current = replacement
+
+    frame = app.capture_game()
+
+    assert frame is None
+    assert app.backend.captures == 0
+    assert app._shot is None
+
+
+def test_recent_frame_is_reused_for_the_same_window_identity():
+    selected = WindowInfo("1", "Game", "game", Rect(0, 0, 32, 32), capture_id="same")
+    app = _app(selected)
+    app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"cached frame")
+
+    assert app.capture_game() == b"cached frame"
+    assert app.backend.captures == 0
+
+
+def test_frame_is_discarded_if_selection_changes_during_capture():
+    selected = WindowInfo("1", "Game A", "a", Rect(0, 0, 32, 32), capture_id="a")
+    other = WindowInfo("2", "Game B", "b", Rect(0, 0, 32, 32), capture_id="b")
+    app = _app(selected)
+    app.backend.on_capture = lambda: setattr(app, "window", other)
+
+    assert app.capture_game(fresh=True) is None
+    assert app._shot is None

@@ -42,10 +42,22 @@ SHOP_FRAME = _frame("shop")
 OTHER_FRAME = _frame("other")
 
 
+def _blank_frame() -> bytes:
+    buf = io.BytesIO()
+    Image.new("L", (128, 128), 8).save(buf, "JPEG", quality=95)
+    return buf.getvalue()
+
+
 class _Provider:
+    name = "fake"
+    model = "fake-vision-1"
+
     def __init__(self, payloads: list[dict]):
         self.payloads = payloads
         self.calls = 0
+
+    def supports_vision(self) -> bool:
+        return True
 
     def chat(self, **kwargs) -> SimpleNamespace:
         payload = self.payloads[self.calls]
@@ -61,11 +73,24 @@ class _Capture:
         return self.frames.pop(0) if self.frames else None
 
 
+class BlindProvider(_Provider):
+    name = "blind"
+    model = "llama-3"
+
+    def __init__(self):
+        super().__init__([])
+
+    def supports_vision(self) -> bool:
+        return False
+
+
 def _build(tmp_path, payloads, frames):
     store = Store(tmp_path / "coach.db")
     advice = []
+    cfg = Config()
+    cfg.coach.confirm_poll_s = 0.0  # the confirmation is a capture, not a wait
     pipeline = CoachPipeline(
-        cfg=Config(),
+        cfg=cfg,
         store=store,
         provider_factory=lambda: _Provider(payloads),
         capture=_Capture(frames),
@@ -78,38 +103,83 @@ def test_frames_are_far_enough_apart_to_work_as_change():
     assert hash_distance(dhash(SHOP_FRAME), dhash(OTHER_FRAME)) > Config().coach.min_change
 
 
-def test_advice_waits_for_the_screen_to_persist(tmp_path):
+def test_a_persisting_window_is_advised_without_waiting_an_interval(tmp_path):
     pipeline, advice, _ = _build(tmp_path, [SHOP], [SHOP_FRAME, SHOP_FRAME, SHOP_FRAME])
     pipeline.tick()
-    assert advice == []  # a single sighting is only a candidate
-    pipeline.tick()
+    # The same look re-captured the screen: it persisted, so it is spoken at once.
     assert [a.advice for a in advice] == [SHOP["advice"]]
-    pipeline.tick()  # nothing pending any more: no repeat
+    pipeline.tick()  # the screen did not move: it was already judged
     assert len(advice) == 1
 
 
 def test_a_flash_that_vanishes_is_never_spoken(tmp_path):
     pipeline, advice, _ = _build(tmp_path, [SHOP, ABSTAIN], [SHOP_FRAME, OTHER_FRAME, OTHER_FRAME])
-    pipeline.tick()  # candidate on a transient screen
-    pipeline.tick()  # the screen moved on, the model abstains
+    pipeline.tick()  # candidate on a transient screen: the confirmation sees it gone
     pipeline.tick()  # the new screen is stable, but no candidate survived
     assert advice == []
 
 
-def test_a_stale_candidate_is_dropped(tmp_path):
-    pipeline, advice, _ = _build(tmp_path, [SHOP], [SHOP_FRAME, SHOP_FRAME])
-    pipeline.tick()
-    pipeline._pending_at -= pipeline._pending_ttl_s + 1
-    pipeline.tick()
-    assert advice == []
-
-
-def test_pending_and_delivery_are_audited(tmp_path):
+def test_delivery_and_turn_timing_are_audited(tmp_path):
     pipeline, advice, store = _build(tmp_path, [SHOP], [SHOP_FRAME, SHOP_FRAME])
-    pipeline.tick()
     pipeline.tick()
     stats = store.coach_stats()
     assert stats["gate:accepted"] == 1
     assert stats["pre_gate:await_stability"] == 1
     assert stats["pre_gate:delivered"] == 1
     assert len(advice) == 1
+    turn = pipeline.metrics["last_turn"]
+    assert turn["outcome"] == "delivered"
+    assert turn["frame_kib"] > 0  # the payload actually sent is measured every turn
+
+
+def test_a_text_only_model_never_gets_a_frame(tmp_path):
+    # The capture list is empty: taking a frame here would return None and hide it,
+    # so the provider records the proof instead.
+    store = Store(tmp_path / "coach.db")
+    pipeline = CoachPipeline(
+        cfg=Config(),
+        store=store,
+        provider_factory=BlindProvider,
+        capture=lambda: (_ for _ in ()).throw(AssertionError("captured a frame")),
+        on_advice=lambda obs: None,
+    )
+    assert pipeline.can_see() == (False, "blind/llama-3")
+    assert pipeline.tick() is None
+    assert pipeline.metrics["needs_vision"] == 1
+    assert store.coach_stats().get("pre_gate:no_vision") == 1
+
+
+def test_a_blank_frame_never_reaches_the_model(tmp_path):
+    # No payload is queued: a model call here would raise IndexError.
+    pipeline, advice, store = _build(tmp_path, [], [_blank_frame()])
+    assert pipeline.tick() is None
+    assert advice == []
+    assert pipeline.metrics["blank_frames"] == 1
+    assert store.coach_stats().get("pre_gate:blank_frame") == 1
+
+
+def test_slow_turn_skips_missed_intervals_instead_of_bursting(tmp_path, monkeypatch):
+    import gamebuddy.coach.pipeline as module
+
+    pipeline, _advice, _store = _build(tmp_path, [], [])
+    pipeline.cfg.coach.interval_s = 4
+    pipeline._next_due = 4
+    clock = [5.0]
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+
+    class StopAfterOneTick:
+        calls = 0
+
+        def wait(self, _timeout):
+            self.calls += 1
+            return self.calls > 2
+
+        def is_set(self):
+            return False
+
+    pipeline._stop = StopAfterOneTick()
+    pipeline.tick = lambda: clock.__setitem__(0, 20.0)
+
+    pipeline._loop()
+
+    assert pipeline._next_due == 24.0

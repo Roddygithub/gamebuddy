@@ -1,4 +1,5 @@
 import io
+import random
 
 from PIL import Image, ImageDraw
 
@@ -47,3 +48,22 @@ def test_default_capture_keeps_native_ultrawide_hud_resolution():
     cfg = CaptureConfig()
     image = to_jpeg(_png((20, 30, 40), w=2536, h=1030), cfg.max_width, cfg.jpeg_quality)
     assert Image.open(io.BytesIO(image)).size == (2536, 1030)
+
+
+def test_to_jpeg_honors_byte_budget_for_high_detail_frames():
+    rng = random.Random(7)
+    img = Image.frombytes("RGB", (1800, 1200), rng.randbytes(1800 * 1200 * 3))
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+
+    jpg = to_jpeg(buf.getvalue(), max_width=1800, quality=90, max_bytes=80_000)
+
+    assert len(jpg) <= 80_000
+    assert Image.open(io.BytesIO(jpg)).format == "JPEG"
+
+
+def test_to_jpeg_rejects_impossible_budget():
+    import pytest
+
+    with pytest.raises(ValueError, match="at least 1024"):
+        to_jpeg(_png((0, 0, 0)), max_bytes=100)

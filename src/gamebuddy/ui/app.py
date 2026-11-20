@@ -82,7 +82,10 @@ class GameBuddyApp(QObject):
         self.tray: QSystemTrayIcon | None = None
         self._speaking = threading.Event()
         self._timings: dict[str, float] = {}
+        self._shot_lock = threading.Lock()
+        self._shot: tuple[float, str, str, str, bytes] | None = None
         self._last_stt_text = ""
+        self._speech_gen = 0  # bumped by each reply, so an older one stops talking
 
         self.kin = Kin(self.cfg, self.store, self._kin_callbacks())
         self.kin.language = self.tr.language
@@ -410,7 +413,9 @@ class GameBuddyApp(QObject):
             self.select_window(window)
 
     def select_window(self, window: WindowInfo | None) -> None:
-        self.window = window
+        with self._shot_lock:
+            self.window = window
+            self._shot = None
         remember_window(window)
         self.kin.game_title = window.title if window else ""
         if self.coach:
@@ -438,26 +443,76 @@ class GameBuddyApp(QObject):
         g = self.widget.frameGeometry()
         return Rect(g.x(), g.y(), g.width(), g.height()) if self.widget.isVisible() else None
 
-    def capture_game(self) -> bytes | None:
-        """JPEG of the selected game window, or None. Safe to call from worker threads."""
-        if self.window is None:
-            return None
+    def capture_game(self, fresh: bool = False) -> bytes | None:
+        """JPEG of the selected game window, or None. Safe to call from worker threads.
+
+        A frame captured within ``capture.reuse_ms`` is reused, so a chat turn and a
+        coach look do not each pay for the same screenshot. ``fresh=True`` bypasses
+        the cache (the coach's stability check must look again).
+        """
+        with self._shot_lock:
+            window = self.window
+            if window is None:
+                return None
+            source = (window.id, window.capture_id, window.app_id)
+            cached = self._shot
+            reuse = (
+                not fresh
+                and cached
+                and cached[1:4] == source
+                and (time.monotonic() - cached[0]) * 1000 < self.cfg.capture.reuse_ms
+            )
+        if reuse:
+            try:
+                current = self.backend.find_window(window.id)
+            except Exception:  # noqa: BLE001 — stale frames fail closed
+                current = None
+            if current and (current.id, current.capture_id, current.app_id) == source:
+                with self._shot_lock:
+                    if self.window is window and self._shot is cached:
+                        return cached[4]
+            with self._shot_lock:
+                if self._shot is cached:
+                    self._shot = None
+            if not current or (current.id, current.capture_id, current.app_id) != source:
+                return None
         try:
-            png = self.backend.capture(self.window)
+            png = self.backend.capture(window)
         except CaptureError as exc:
+            with self._shot_lock:
+                if self.window is window:
+                    self._shot = None
             if str(exc) == "window_lost":
                 self.bridge.window_lost.emit()
             else:
                 log.warning("capture failed: %s", exc)
             return None
         except Exception as exc:  # noqa: BLE001
+            with self._shot_lock:
+                if self.window is window:
+                    self._shot = None
             log.warning("capture failed: %s", exc)
             return None
-        mask = overlay_mask(self.window, self._overlay_rect())
-        return to_jpeg(png, self.cfg.capture.max_width, self.cfg.capture.jpeg_quality, mask)
+        mask = overlay_mask(window, self._overlay_rect())
+        jpeg = to_jpeg(
+            png,
+            self.cfg.capture.max_width,
+            self.cfg.capture.jpeg_quality,
+            mask,
+            self.cfg.capture.max_bytes,
+        )
+        with self._shot_lock:
+            # A window can be changed while the backend is capturing it. Never
+            # return or cache that old target after the user selects another.
+            if self.window is not window:
+                return None
+            self._shot = (time.monotonic(), *source, jpeg)
+        return jpeg
 
     def _on_window_lost(self) -> None:
-        self.window = None
+        with self._shot_lock:
+            self.window = None
+            self._shot = None
         self.kin.game_title = ""
         self.widget.set_window_title(None)
         self.widget.add_error(self.tr("window_lost"))
@@ -467,6 +522,7 @@ class GameBuddyApp(QObject):
         text = text.strip()
         if not text or self.kin.busy:
             return
+        self._cancel_speech()
         self.widget.add_user(text)
         self.widget.begin_stream()
         self.pool.start(lambda: self._ask_worker(text))
@@ -490,27 +546,54 @@ class GameBuddyApp(QObject):
             self.pool.start(lambda: self._speak(text))
 
     def _speak(self, text: str) -> None:
-        from gamebuddy.audio import player
-        from gamebuddy.speech.tts import synthesize
+        """Sentence by sentence: the first words leave long before the whole reply is voiced.
 
+        ``timings.synthesis_s`` is time to the *first* chunk, which is what the
+        player hears as latency.
+        """
+        from gamebuddy.audio import player
+        from gamebuddy.speech.tts import split_sentences, synthesize
+
+        chunks = split_sentences(text)
+        if not chunks:
+            return
+        self._speech_gen += 1
+        generation = self._speech_gen
+        player.stop()
+        started = time.monotonic()
+        self._speaking.set()
+        if self.listener:
+            self.listener.paused = True
         try:
-            started = time.monotonic()
-            audio, fmt = synthesize(text, self.cfg, self.tr.language)
-            self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
-            if not audio:
-                return
-            self._speaking.set()
-            if self.listener:
-                self.listener.paused = True
             self.bridge.status.emit("speaking")
-            player.play(audio, fmt, self.cfg.audio.output_device)
+            for index, chunk in enumerate(chunks):
+                if generation != self._speech_gen:
+                    return
+                audio, fmt = synthesize(chunk, self.cfg, self.tr.language)
+                if index == 0:
+                    self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
+                if generation != self._speech_gen:
+                    return
+                if audio:
+                    player.play(audio, fmt, self.cfg.audio.output_device)
         except Exception as exc:  # noqa: BLE001
             log.warning("tts failed: %s", exc)
         finally:
-            self._speaking.clear()
-            if self.listener:
-                self.listener.paused = False
-            self.bridge.status.emit("ready")
+            if generation == self._speech_gen:  # a newer reply owns the status now
+                self._speaking.clear()
+                if self.listener:
+                    self.listener.paused = False
+                self.bridge.status.emit("ready")
+
+    def _cancel_speech(self) -> None:
+        """Stop active playback and prevent its worker from voicing later chunks."""
+        self._speech_gen += 1
+        from gamebuddy.audio import player
+
+        player.stop()
+        self._speaking.clear()
+        if self.listener:
+            self.listener.paused = False
 
     def _on_error(self, message: str) -> None:
         self.widget.end_stream("")
@@ -528,9 +611,7 @@ class GameBuddyApp(QObject):
                 self.recorder = Recorder(
                     self.cfg.audio.sample_rate, self.cfg.audio.input_device, on_level=self.bridge.level.emit
                 )
-            from gamebuddy.audio import player
-
-            player.stop()
+            self._cancel_speech()
             self.recorder.start()
             self.widget.set_recording(True)
             self.widget.set_status("listening")
@@ -628,10 +709,19 @@ class GameBuddyApp(QObject):
                     store=self.store,
                     provider_factory=lambda: make_provider(self.cfg, coach_model(self.cfg)),
                     capture=self.capture_game,
+                    capture_fresh=lambda: self.capture_game(fresh=True),
                     on_advice=self._on_coach_advice,
                     language=self.tr.language,
                     game_title=self.kin.game_title,
                 )
+            try:  # a missing key surfaces on the first tick, as it always did
+                ok, label = self.coach.can_see()
+            except Exception:  # noqa: BLE001
+                ok = True
+            if not ok:
+                # Better to refuse here than to run a coach that only reads the title.
+                self.widget.add_error(self.tr("coach_needs_vision", model=label))
+                return
             self.coach.start()
         elif self.coach:
             self.coach.stop()
@@ -727,6 +817,7 @@ class GameBuddyApp(QObject):
             "hands_free": bool(self.listener and self.listener.active),
             "dropped_utterances": self.listener.dropped if self.listener else 0,
             "coach": bool(self.coach and self.coach.running),
+            "coach_turn": dict(self.coach.metrics["last_turn"]) if self.coach else {},
             "busy": self.kin.busy,
             "backend": self.backend.name,
             "provider": self.cfg.llm.provider,

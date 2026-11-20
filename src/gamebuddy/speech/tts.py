@@ -31,6 +31,28 @@ def speakable(text: str, limit: int = 600) -> str:
     return text[:limit]
 
 
+def split_sentences(text: str, limit: int = 220) -> list[str]:
+    """Speakable chunks, so playback starts on the first sentence.
+
+    Deliberately naive: an abbreviation ("e.g.") can end a chunk. It only changes
+    where the voice pauses, never what is said.
+    """
+    text = speakable(text, 4000)
+    if not text:
+        return []
+    chunks: list[str] = []
+    for chunk in re.split(r"(?<=[.!?…])\s+|\n+", text):
+        chunk = chunk.strip()
+        while len(chunk) > limit:
+            cut = chunk.rfind(", ", 0, limit)
+            cut = cut + 1 if cut > limit // 4 else limit
+            chunks.append(chunk[:cut].strip())
+            chunk = chunk[cut:].strip()
+        if chunk:
+            chunks.append(chunk)
+    return chunks
+
+
 def synthesize(text: str, cfg: Config, language: str = "en") -> tuple[bytes, str]:
     engine = cfg.speech.tts
     text = speakable(text)

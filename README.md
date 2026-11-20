@@ -261,7 +261,7 @@ Required system packages: `grim` (Wayland screenshots), `portaudio` (microphone)
                  └────────────────────────────────────────────────────┘
 ```
 
-- **Capture**: `hyprctl -j clients` + `grim -g` on Hyprland (sway and X11 equivalents). The widget's own rectangle is blacked out before the frame is sent to the model. Capture happens only when you ask something (or when coach mode is on).
+- **Capture**: Hyprland uses the selected window's `stableId` with `grim -T`; sway and X11 use their window-region backends. A failed Hyprland window capture never falls back to the desktop. The widget is masked on backends where it can overlap the captured region. Capture happens only when you ask something (or when coach mode is on).
 - **Ask mode**: your question + an optional screenshot + recent conversation + long-term notes go to the configured model with tools `web_search`, `fetch_page`, `pin_content`, `unpin_content`, `remember`, `recall`.
 - **Coach mode**: capture → perceptual-hash change filter → structured-state JSON from a cheap model → hard grounding gate (ownership, open decision window, evidence, no critical unknowns, advice must name a visible option) → one short line in the widget. Everything is logged in the `coach_log` table so false positives can be audited.
 
