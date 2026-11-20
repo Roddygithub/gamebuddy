@@ -86,6 +86,8 @@ class GameBuddyApp(QObject):
         self._speaking = threading.Event()
         self._timings: dict[str, float] = {}
         self._shot_lock = threading.Lock()
+        self._capture_lock = threading.Lock()
+        self._window_generation = 0
         self._shot: tuple[float, str, str, str, bytes] | None = None
         self._last_stt_text = ""
         self._speech_gen = 0  # bumped by each reply, so an older one stops talking
@@ -421,6 +423,7 @@ class GameBuddyApp(QObject):
     def select_window(self, window: WindowInfo | None) -> None:
         with self._shot_lock:
             self.window = window
+            self._window_generation += 1
             self._shot = None
         remember_window(window)
         self.kin.game_title = window.title if window else ""
@@ -456,6 +459,10 @@ class GameBuddyApp(QObject):
         coach look do not each pay for the same screenshot. ``fresh=True`` bypasses
         the cache (the coach's stability check must look again).
         """
+        with self._capture_lock:
+            return self._capture_game(fresh)
+
+    def _capture_game(self, fresh: bool = False) -> bytes | None:
         with self._shot_lock:
             window = self.window
             if window is None:
@@ -508,7 +515,7 @@ class GameBuddyApp(QObject):
             with self._shot_lock:
                 if self.window is window:
                     self._shot = None
-            if str(exc) == "window_lost":
+            if str(exc) in ("window_lost", "window_replaced"):
                 self._notify_window_lost(window)
             else:
                 log.warning("capture failed: %s", exc)
@@ -540,17 +547,20 @@ class GameBuddyApp(QObject):
             if self.window is not window:
                 return
             self._shot = None
-        self.bridge.window_lost.emit(window.id, window.capture_id, window.app_id)
+            generation = self._window_generation
+        self.bridge.window_lost.emit(window.id, window.capture_id, window.app_id, generation)
 
-    def _on_window_lost(self, window_id: str, capture_id: str, app_id: str) -> None:
+    def _on_window_lost(self, window_id: str, capture_id: str, app_id: str, generation: int) -> None:
         with self._shot_lock:
-            if not self.window or (self.window.id, self.window.capture_id, self.window.app_id) != (
-                window_id,
-                capture_id,
-                app_id,
+            if (
+                not self.window
+                or self._window_generation != generation
+                or (self.window.id, self.window.capture_id, self.window.app_id)
+                != (window_id, capture_id, app_id)
             ):
                 return
             self.window = None
+            self._window_generation += 1
             self._shot = None
         self.kin.game_title = ""
         self.widget.set_window_title(None)

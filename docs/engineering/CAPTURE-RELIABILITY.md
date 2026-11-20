@@ -20,7 +20,8 @@ de cette mission. Une capture live du jeu n’a pas été exécutée.
 6. L’app réutilise une frame pendant au plus 250 ms seulement si `(id, capture_id,
    app_id)` correspond encore et que le backend retrouve cette même source. Une erreur,
    perte ou sélection différente invalide le cache. L’image est gardée en mémoire; ce
-   mécanisme ne l’écrit pas sur disque.
+   mécanisme ne l’écrit pas sur disque. Un verrou d’acquisition distinct sérialise les
+   captures et empêche une frame lente d’écraser un résultat plus récent.
 7. Coach contourne ce cache pour sa seconde capture de confirmation. ASK capture à la
    demande et joint le résultat au provider sélectionné.
 
@@ -31,7 +32,8 @@ de cette mission. Une capture live du jeu n’a pas été exécutée.
   échoue fermé sans cache, avec cache expiré ou sur le cache valide; changement de
   sélection pendant l’acquisition ne renvoie pas la frame; une notification de perte
   retardée ne détruit pas la nouvelle sélection; une source absente est signalée après un
-  lookup concluant, mais une erreur transitoire de lookup n’efface pas le titre.
+  lookup concluant, mais une erreur transitoire de lookup n’efface pas le titre; deux captures
+  fraîches concurrentes n’inversent pas l’âge du cache.
 - `tests/test_observer_capture.py`: préserve l’image ultra-large sans plafond et vérifie
   qu’une image haute entropie respecte le budget; refuse un budget trop petit pour un JPEG.
 - `tests/test_coach_stability.py`: une frame changée pendant la confirmation ne produit

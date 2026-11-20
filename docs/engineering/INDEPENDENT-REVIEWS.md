@@ -143,6 +143,19 @@
   différente préservée. Suite après correction: **223 passed**; Ruff, format, shell syntax et
   diff-check passent. Nouvelle revue indépendante requise avant PR.
 
+## Revue 10 — remplacement intermédiaire et captures simultanées
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `3c015ed`.
+- Findings: backend pouvait signaler `window_replaced` après la prévalidation sans nettoyer la
+  sélection (**P2**); signal tardif pouvait supprimer une sélection identique re-sélectionnée
+  (**P2**); deux captures concurrentes pouvaient inverser l’ordre du cache (**P2**).
+- Réponse: `window_replaced` produit le même événement ciblé que `window_lost`; un compteur de
+  sélection est joint au signal et contrôlé par le slot; `_capture_lock` dédié sérialise les
+  captures sans bloquer le changement de sélection via `_shot_lock`.
+- Tests ajoutés: notification backend remplacé, resélection même identité avec signal obsolète,
+  et deux captures fraîches bloquées pour vérifier l’ordre cache. Suite: **225 passed**; Ruff,
+  format, shell syntax, diff-check passent. Revue de suivi requise avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans

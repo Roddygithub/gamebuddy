@@ -41,6 +41,8 @@ class _Backend:
 def _app(window: WindowInfo) -> GameBuddyApp:
     app = GameBuddyApp.__new__(GameBuddyApp)
     app._shot_lock = threading.Lock()
+    app._capture_lock = threading.Lock()
+    app._window_generation = 1
     app._shot = None
     app.window = window
     app.cfg = SimpleNamespace(capture=CaptureConfig(reuse_ms=250))
@@ -101,10 +103,11 @@ def test_old_window_lost_notification_does_not_clear_new_selection():
     selected = WindowInfo("1", "New game", "new", Rect(0, 0, 32, 32), capture_id="new")
     app = GameBuddyApp.__new__(GameBuddyApp)
     app._shot_lock = threading.Lock()
+    app._window_generation = 2
     app.window = selected
     app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"new frame")
 
-    app._on_window_lost("old", "old-capture", "old-app")
+    app._on_window_lost(selected.id, selected.capture_id, selected.app_id, 1)
 
     assert app.window is selected
     assert app._shot[4] == b"new frame"
@@ -139,7 +142,7 @@ def test_missing_selected_window_notifies_loss_before_capture(fresh, cached):
         app._shot = (time.monotonic(), selected.id, selected.capture_id, selected.app_id, b"cached")
 
     assert app.capture_game(fresh=fresh) is None
-    assert emitted == [(selected.id, selected.capture_id, selected.app_id)]
+    assert emitted == [(selected.id, selected.capture_id, selected.app_id, 1)]
     assert app._shot is None
 
 
@@ -156,3 +159,67 @@ def test_temporary_identity_lookup_error_does_not_report_window_lost():
 
     assert app.capture_game(fresh=True) is None
     assert emitted == []
+
+
+def test_replaced_window_backend_error_reports_lost_selection():
+    selected = WindowInfo("1", "Game", "game", Rect(0, 0, 32, 32), capture_id="old")
+    app = _app(selected)
+    emitted = []
+    app.bridge.window_lost.emit = lambda *identity: emitted.append(identity)
+    app.backend.current = selected
+    app.backend.capture = lambda _window: (_ for _ in ()).throw(CaptureError("window_replaced"))
+
+    assert app.capture_game(fresh=True) is None
+    assert emitted == [(selected.id, selected.capture_id, selected.app_id, 1)]
+
+
+def test_concurrent_fresh_captures_cannot_overwrite_newer_cache_with_older_frame():
+    selected = WindowInfo("1", "Game", "game", Rect(0, 0, 32, 32), capture_id="stable")
+    app = _app(selected)
+    first_entered = threading.Event()
+    release_first = threading.Event()
+    second_waiting = threading.Event()
+    results = []
+    colors = [(200, 10, 10), (10, 200, 10)]
+    calls = [0]
+
+    class ObservedLock:
+        def __init__(self):
+            self.lock = threading.Lock()
+            self.calls = 0
+
+        def __enter__(self):
+            self.calls += 1
+            if self.calls == 2:
+                second_waiting.set()
+            self.lock.acquire()
+
+        def __exit__(self, *_args):
+            self.lock.release()
+
+    app._capture_lock = ObservedLock()
+
+    def capture(_window):
+        index = calls[0]
+        calls[0] += 1
+        if index == 0:
+            first_entered.set()
+            assert release_first.wait(2)
+        return _png(colors[index])
+
+    app.backend.capture = capture
+    first = threading.Thread(target=lambda: results.append(app.capture_game(fresh=True)))
+    second = threading.Thread(target=lambda: results.append(app.capture_game(fresh=True)))
+    first.start()
+    assert first_entered.wait(2)
+    second.start()
+    assert second_waiting.wait(2)
+    assert calls == [1]
+    release_first.set()
+    first.join(2)
+    second.join(2)
+
+    assert not first.is_alive() and not second.is_alive()
+    assert calls == [2]
+    assert app._shot[4] == results[1]
+    assert results[0] != results[1]
