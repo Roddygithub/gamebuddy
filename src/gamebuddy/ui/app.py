@@ -557,9 +557,23 @@ class GameBuddyApp(QObject):
     def _on_reply_done(self, text: str) -> None:
         self.widget.end_stream(text)
         if text.strip() and self.cfg.speech.speak_replies and self.cfg.speech.tts != "none":
-            self.pool.start(lambda: self._speak(text))
+            self._queue_speech(text)
 
-    def _speak(self, text: str) -> None:
+    def _queue_speech(self, text: str) -> None:
+        """Assign cancellation before a worker can wait in the thread-pool queue."""
+        from gamebuddy.audio import player
+
+        with self._speech_lock:
+            if self._speech_cancelled:
+                self._speech_cancelled.set()
+            self._speech_gen += 1
+            generation = self._speech_gen
+            cancelled = threading.Event()
+            self._speech_cancelled = cancelled
+        player.stop()
+        self.pool.start(lambda: self._speak(text, generation, cancelled))
+
+    def _speak(self, text: str, generation: int, cancelled: threading.Event) -> None:
         """Synthesize sentence by sentence and stop promptly when superseded."""
         from gamebuddy.audio import player
         from gamebuddy.speech.tts import split_sentences, synthesize
@@ -567,12 +581,8 @@ class GameBuddyApp(QObject):
         chunks = split_sentences(text)
         if not chunks:
             return
-        with self._speech_lock:
-            self._speech_gen += 1
-            generation = self._speech_gen
-            cancelled = threading.Event()
-            self._speech_cancelled = cancelled
-        player.stop()
+        if cancelled.is_set() or generation != self._speech_gen:
+            return
         started = time.monotonic()
         self._speaking.set()
         if self.listener:

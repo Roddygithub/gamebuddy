@@ -91,22 +91,29 @@ class CoachPipeline:
         return self._thread is not None and self._thread.is_alive()
 
     def start(self) -> None:
-        if self.running:
-            return
-        self._stop.clear()
-        self._next_due = time.monotonic() + self.cfg.coach.interval_s
-        self._thread = threading.Thread(target=self._loop, name="gamebuddy-coach", daemon=True)
-        self._thread.start()
+        with self._delivery_lock:
+            if self.running and not self._stop.is_set():
+                return
+            stop_event = threading.Event()
+            self._stop = stop_event
+            self._next_due = time.monotonic() + self.cfg.coach.interval_s
+            self._thread = threading.Thread(
+                target=self._loop, args=(stop_event,), name="gamebuddy-coach", daemon=True
+            )
+            self._thread.start()
 
     def stop(self) -> None:
         with self._delivery_lock:
             self._stop.set()
 
     # ---- loop ------------------------------------------------------------
-    def _loop(self) -> None:
+    def _loop(self, stop_event: threading.Event | None = None) -> None:
         """Fixed-rate: a slow turn must not push every later look back with it."""
+        stop_event = stop_event or self._stop
         while True:
-            if self._stop.wait(max(0.0, self._next_due - time.monotonic())):
+            if stop_event.wait(max(0.0, self._next_due - time.monotonic())):
+                return
+            if stop_event.is_set():
                 return
             self._next_due += self.cfg.coach.interval_s
             now = time.monotonic()
@@ -115,7 +122,7 @@ class CoachPipeline:
             if self.paused:
                 continue
             try:
-                self.tick()
+                self.tick(stop_event)
             except Exception as exc:  # noqa: BLE001
                 log.warning("coach tick failed: %s", exc)
                 self.store.log_coach("error", "", str(exc), self.game_title)
@@ -132,7 +139,8 @@ class CoachPipeline:
         label = f"{self._provider.name}/{self._provider.model}".strip("/")
         return self._provider.supports_vision(), label
 
-    def tick(self) -> Observation | None:
+    def tick(self, stop_event: threading.Event | None = None) -> Observation | None:
+        stop_event = stop_event or self._stop
         ok, label = self.can_see()
         if not ok:
             if not self.needs_vision:  # say it once, not every interval
@@ -179,7 +187,7 @@ class CoachPipeline:
         # flash or a transient tooltip never reaches the player.
         self.store.log_coach("pre_gate", "await_stability", obs.advice, self.game_title)
         confirm_started = time.monotonic()
-        stable = self._confirm()
+        stable = self._confirm(stop_event)
         confirm_ms = int((time.monotonic() - confirm_started) * 1000)
         if not stable:
             self.store.log_coach("pre_gate", "screen_moved", obs.advice, self.game_title)
@@ -188,24 +196,25 @@ class CoachPipeline:
         # stop() and delivery share a lock so cancellation during confirmation
         # cannot leak advice after Coach has been disabled.
         with self._delivery_lock:
-            if self._stop.is_set():
+            if stop_event.is_set():
                 self._log_turn(capture_ms, eval_ms, confirm_ms, "cancelled")
                 return None
             self._deliver(obs)
         self._log_turn(capture_ms, eval_ms, confirm_ms, "delivered")
         return obs
 
-    def _confirm(self) -> bool:
+    def _confirm(self, stop_event: threading.Event | None = None) -> bool:
         """Did the screen we just judged survive one more look?
 
         Polling at ``confirm_poll_s`` costs a capture and a perceptual hash instead
         of a full interval of silence — the frame is already in hand.
         """
-        if self._stop.wait(self.cfg.coach.confirm_poll_s):
+        stop_event = stop_event or self._stop
+        if stop_event.wait(self.cfg.coach.confirm_poll_s):
             return False
         frame = self.capture_fresh()
         self.metrics["confirm_checks"] += 1
-        if self._stop.is_set() or not frame:
+        if stop_event.is_set() or not frame:
             return False
         h = dhash(frame)
         if self._last_hash is not None and hash_distance(h, self._last_hash) >= self.cfg.coach.min_change:

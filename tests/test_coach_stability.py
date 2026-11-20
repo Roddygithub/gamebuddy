@@ -195,6 +195,42 @@ def test_stop_during_confirmation_prevents_advice_delivery(tmp_path):
     assert advice == []
 
 
+def test_coach_restarts_while_stopped_capture_finishes(tmp_path):
+    pipeline, _advice, _store = _build(tmp_path, [], [])
+    pipeline.cfg.coach.interval_s = 0.01
+    first_capture = threading.Event()
+    release_first = threading.Event()
+    restarted = threading.Event()
+    count = [0]
+
+    def capture():
+        count[0] += 1
+        if count[0] == 1:
+            first_capture.set()
+            assert release_first.wait(2)
+        else:
+            restarted.set()
+        return None
+
+    pipeline.capture = capture
+    pipeline.start()
+    old_thread = pipeline._thread
+    assert first_capture.wait(2)
+    pipeline.stop()
+    pipeline.start()
+    new_thread = pipeline._thread
+    assert new_thread is not old_thread
+    assert restarted.wait(2)
+
+    pipeline.stop()
+    release_first.set()
+    old_thread.join(2)
+    new_thread.join(2)
+
+    assert not old_thread.is_alive()
+    assert not new_thread.is_alive()
+
+
 def test_a_text_only_model_never_gets_a_frame(tmp_path):
     # The capture list is empty: taking a frame here would return None and hide it,
     # so the provider records the proof instead.
@@ -241,7 +277,7 @@ def test_slow_turn_skips_missed_intervals_instead_of_bursting(tmp_path, monkeypa
             return False
 
     pipeline._stop = StopAfterOneTick()
-    pipeline.tick = lambda: clock.__setitem__(0, 20.0)
+    pipeline.tick = lambda _stop_event=None: clock.__setitem__(0, 20.0)
 
     pipeline._loop()
 

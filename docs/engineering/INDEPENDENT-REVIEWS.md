@@ -23,6 +23,20 @@
 - Résultat: findings corrigés, **revue de suivi indépendante requise avant PR**. Le suivi doit
   inspecter les modifications réelles et la sortie de tests, pas cette synthèse seule.
 
+## Revue 2 — suivi TTS et lifecycle Coach
+
+- Relecteur: instance Codex distincte, GPT-6.1 Terra, reasoning medium, lecture seule.
+- Checkout inspecté: `d7e99bf`, diff réel et suite locale 203 tests exécutée par le relecteur.
+- Les corrections de la revue 1 ont été vérifiées; deux objections supplémentaires restent
+  à traiter: (1) le jeton TTS était encore créé dans le worker, donc une tâche déjà mise en
+  file pouvait commencer après annulation; (2) un `start()` pendant que le thread stoppé est
+  encore bloqué ne redémarrait pas le Coach.
+- Réponse en cours: le jeton TTS est maintenant assigné avant la mise en file, avec un test
+  annulant une réponse en attente; chaque cycle Coach possède son propre Event d’arrêt, ce qui
+  permet un redémarrage pendant que l’ancien tick se termine; un test bloque la première
+  capture puis vérifie le nouveau cycle. Sortie finale et résultat de la revue suivante à
+  ajouter avant PR.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans
