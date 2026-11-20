@@ -45,7 +45,7 @@ class CoachPipeline:
         store: Store,
         provider_factory: Callable[[], LLMProvider],
         capture: Callable[[], bytes | None],  # returns JPEG bytes of the game window or None
-        on_advice: Callable[[Observation], None],
+        on_advice: Callable[..., None],
         on_status: Callable[[str], None] = lambda key: None,
         language: str = "en",
         game_title: str = "",
@@ -70,8 +70,10 @@ class CoachPipeline:
         self._tick_lock = threading.Lock()
         self._stop = threading.Event()
         self._last_hash: int | None = None
+        self._last_hash_context: int | None = None
         self._last_saved_hash: int | None = None
         self._last_advice = ""
+        self._last_advice_context: int | None = None
         self._last_advice_at = 0.0
         self._delivery_lock = threading.Lock()
         self._next_due = 0.0
@@ -178,7 +180,12 @@ class CoachPipeline:
             self.store.log_coach("pre_gate", "blank_frame", "", self.game_title)
             return None
         h = dhash(frame)
-        if self._last_hash is not None and hash_distance(h, self._last_hash) < self.cfg.coach.min_change:
+        same_context = context == self._last_hash_context
+        if (
+            same_context
+            and self._last_hash is not None
+            and hash_distance(h, self._last_hash) < self.cfg.coach.min_change
+        ):
             # Nothing moved since the last look: this screen was already judged.
             return None
         self.metrics["candidates"] += 1
@@ -192,13 +199,14 @@ class CoachPipeline:
         # Mark only a frame that actually reaches the reasoner. A candidate that
         # arrives during cooldown must be retried once the cooldown expires.
         eval_started = time.monotonic()
-        obs = self.evaluate(frame)
+        obs = self.evaluate(frame, context)
         eval_ms = int((time.monotonic() - eval_started) * 1000)
         if stop_event.is_set() or not self.context_is_current(context):
             self._log_turn(capture_ms, eval_ms, 0, "cancelled")
             return None
-        self._last_hash = h
         if obs is None:
+            self._last_hash = h
+            self._last_hash_context = context
             self._log_turn(capture_ms, eval_ms, 0, "rejected")
             return None
 
@@ -206,7 +214,7 @@ class CoachPipeline:
         # This reduces transient advice; a perceptual hash is not a hard guarantee.
         self.store.log_coach("pre_gate", "await_stability", obs.advice, self.game_title)
         confirm_started = time.monotonic()
-        stable = self._confirm(stop_event, context)
+        stable = self._confirm(stop_event, context, h)
         confirm_ms = int((time.monotonic() - confirm_started) * 1000)
         if not stable:
             self.store.log_coach("pre_gate", "screen_moved", obs.advice, self.game_title)
@@ -218,12 +226,17 @@ class CoachPipeline:
             if stop_event.is_set() or not self.context_is_current(context):
                 self._log_turn(capture_ms, eval_ms, confirm_ms, "cancelled")
                 return None
-            self._deliver(obs)
+            self._last_hash = h
+            self._last_hash_context = context
+            self._deliver(obs, context)
         self._log_turn(capture_ms, eval_ms, confirm_ms, "delivered")
         return obs
 
     def _confirm(
-        self, stop_event: threading.Event | None = None, expected_context: int | None = None
+        self,
+        stop_event: threading.Event | None = None,
+        expected_context: int | None = None,
+        expected_hash: int | None = None,
     ) -> bool:
         """Did the screen we just judged survive one more look?
 
@@ -242,7 +255,7 @@ class CoachPipeline:
             if confirmed_context != expected_context or not self.context_is_current(confirmed_context):
                 return False
         h = dhash(frame)
-        if self._last_hash is not None and hash_distance(h, self._last_hash) >= self.cfg.coach.min_change:
+        if expected_hash is not None and hash_distance(h, expected_hash) >= self.cfg.coach.min_change:
             return False
         return True
 
@@ -263,7 +276,7 @@ class CoachPipeline:
             self.metrics["last_frame_bytes"] // 1024,
         )
 
-    def evaluate(self, frame: bytes) -> Observation | None:
+    def evaluate(self, frame: bytes, context: int | None = None) -> Observation | None:
         """One reasoning call. Returns the advice to deliver, or None if gated out."""
         if self._provider is None:
             self._provider = self.provider_factory()
@@ -278,7 +291,12 @@ class CoachPipeline:
             self.metrics["rejected"] += 1
             return None
         accepted, reason = validate(obs, self.cfg.coach.min_confidence)
-        if accepted and self._last_advice and similar(obs.advice, self._last_advice) > 0.6:
+        if (
+            accepted
+            and context == self._last_advice_context
+            and self._last_advice
+            and similar(obs.advice, self._last_advice) > 0.6
+        ):
             accepted, reason = False, "redundant"
         self.store.log_coach(
             "gate", "accepted" if accepted else reason, obs.advice or obs.rationale, self.game_title
@@ -288,12 +306,16 @@ class CoachPipeline:
             return None
         return obs
 
-    def _deliver(self, obs: Observation) -> None:
+    def _deliver(self, obs: Observation, context: int | None = None) -> None:
         self.metrics["advised"] += 1
         self._last_advice = obs.advice
+        self._last_advice_context = context
         self._last_advice_at = time.monotonic()
         self.store.log_coach("pre_gate", "delivered", obs.advice, self.game_title)
-        self.on_advice(obs)
+        if self.capture_context:
+            self.on_advice(obs, context)
+        else:
+            self.on_advice(obs)
 
     def _save_frame(self, frame: bytes) -> None:
         """Persist candidate frames so real sessions can be annotated into eval cases."""

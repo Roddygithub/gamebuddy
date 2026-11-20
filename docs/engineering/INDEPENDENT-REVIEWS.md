@@ -171,6 +171,75 @@
   initiale et confirmation malgré des pixels identiques. Suite locale: **227 passed**; Ruff,
   format, shell syntax et diff-check passent. Revue de suivi requise avant PR.
 
+## Revue 12 — contexte de sélection jusqu'aux livraisons asynchrones
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `4846efc`.
+- Findings P2: une sélection pouvait changer entre la dernière vérification du pipeline et
+  l'affichage, l'envoi IPC ou la lecture vocale; le filtre dHash partagé pouvait aussi ignorer
+  une nouvelle fenêtre dont l'image ressemble à celle de l'ancienne.
+- Réponse dans le diff en cours: la génération de capture suit le conseil dans le signal Qt,
+  les prédicats IPC et la tâche TTS; chacun revérifie la cible au moment de l'effet. Le filtre
+  dHash ne déduplique une image que dans le même contexte de capture.
+- Tests ajoutés: génération changée avant l'affichage UI, l'IPC en attente et la synthèse
+  vocale en attente; nouvelle sélection avec dHash identique évaluée par le raisonneur.
+- Vérification locale: **230 tests passent**; `ruff check`, format, `bash -n install.sh` et
+  `git diff --check` passent. Suivi indépendant requis avant PR.
+
+## Revue 13 — déduplication inter-fenêtres et voix déjà active
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `4846efc` avec les corrections
+  de la revue 12 non commitées.
+- Findings P2: (1) le même conseil était filtré comme répétition même lorsqu'il provenait d'une
+  nouvelle génération de capture; (2) une voix Coach déjà démarrée continuait après sélection
+  d'une autre fenêtre.
+- Réponse dans le diff en cours: la déduplication de conseil est maintenant limitée à la même
+  génération de capture; `select_window` annule uniquement la voix Coach active et arrête son
+  lecteur, sans interrompre une réponse ASK.
+- Tests ajoutés: conseil identique accepté après changement de génération; sélection d'une
+  nouvelle fenêtre pendant `player.play` annule la voix Coach.
+- Vérification locale après correction: **231 tests passent**. Revue indépendante de suivi
+  requise avant PR.
+
+## Revue 14 — préserver une voix mise en file pour la nouvelle cible
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `4846efc` avec les corrections
+  des revues 12 et 13 non commitées.
+- Finding P2: entre la publication de la nouvelle génération et l'annulation de l'ancienne voix,
+  un nouveau conseil pouvait être mis en file puis annulé à tort.
+- Réponse dans le diff en cours: chaque job vocal mémorise sa génération de capture; le
+  changement de cible annule les voix Coach obsolètes tout en préservant celle qui appartient
+  à la génération nouvellement sélectionnée. La désactivation globale conserve l'annulation
+  de toute voix Coach.
+- Test ajouté: entrelacement déterministe où un job vocal de la nouvelle cible est mis en file
+  après publication de génération et survit à l'annulation ciblée; l'ancien jeton est annulé.
+- Vérification ciblée: 37 tests de Coach, capture et runtime passent. Revue indépendante de
+  suivi requise avant PR.
+
+## Revue 15 — conseil non retenté après confirmation instable
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; HEAD `4846efc` avec les corrections
+  des revues 12 à 14 non commitées.
+- Finding P2: le hash d'un candidat était mémorisé avant la confirmation; une recapture
+  temporairement différente ou absente abandonnait le conseil, puis le hash empêchait de
+  réévaluer l'écran initial s'il revenait.
+- Réponse dans le diff en cours: un candidat qui a reçu un résultat rejeté peut rester dédupliqué,
+  mais celui qui a produit un conseil n'est mémorisé comme livré/considéré qu'après confirmation
+  stable. La comparaison de confirmation porte directement sur le hash initial.
+- Test ajouté: écran valide, confirmation transitoirement différente, puis retour à l'écran
+  valide; le second tick doit relancer l'évaluation et livrer le conseil.
+- Vérification locale: **233 tests passent**; Ruff check, format check, syntaxe shell et
+  diff-check passent.
+
+## Revue 16 — confirmation stable et suivi final
+
+- Relecteur: GPT-6.1 Terra, reasoning high, lecture seule; checkout `4846efc` avec le diff
+  des revues 12 à 15.
+- Résultat: **aucun finding matériel P0–P2** identifié. Le reviewer a confirmé l’association
+  des déduplications et voix à la cible, ainsi que la confirmation contre le hash initial.
+- Contrôles du reviewer: inspection statique du diff, tests modifiés et chemins de capture,
+  Coach, UI, IPC et TTS; `git diff --check`. Il n'a exécuté ni tests ni linters, ni lancé de
+  jeu, ni accédé au réseau.
+
 ## Revue Gamekin (contexte, distincte d’une revue du code GameBuddy)
 
 La revue indépendante GPT-6.1 du dossier Gamekin est intégrée dans

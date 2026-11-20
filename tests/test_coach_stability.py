@@ -173,6 +173,21 @@ def test_changed_confirmation_frame_is_evaluated_on_next_tick(tmp_path):
     assert len(advice) == 1
 
 
+def test_failed_confirmation_retries_original_candidate_when_it_returns(tmp_path):
+    pipeline, advice, _ = _build(
+        tmp_path,
+        [SHOP, SHOP],
+        [SHOP_FRAME, OTHER_FRAME, SHOP_FRAME, SHOP_FRAME],
+    )
+
+    pipeline.tick()  # transient frame during confirmation drops the otherwise valid advice
+    assert advice == []
+    pipeline.tick()  # original decision is still on screen and must be evaluated again
+
+    assert pipeline.metrics["reasoner_calls"] == 2
+    assert len(advice) == 1
+
+
 def test_stop_during_confirmation_prevents_advice_delivery(tmp_path):
     pipeline, advice, _ = _build(tmp_path, [SHOP], [SHOP_FRAME])
     entered = threading.Event()
@@ -211,6 +226,27 @@ def test_window_change_during_confirmation_drops_old_context_advice(tmp_path):
 
     assert advice == []
     assert pipeline.metrics["reasoner_calls"] == 1
+
+
+def test_new_capture_context_is_evaluated_even_when_hash_matches(tmp_path):
+    pipeline, advice, _ = _build(
+        tmp_path,
+        [SHOP, SHOP],
+        [SHOP_FRAME, SHOP_FRAME, SHOP_FRAME, SHOP_FRAME],
+    )
+    pipeline.on_advice = lambda obs, _context: advice.append(obs)
+    selection = [1]
+    pipeline.capture_context = lambda: selection[0]
+    pipeline.context_is_current = lambda context: context == selection[0]
+    pipeline.cfg.coach.cooldown_s = 0
+
+    pipeline.tick()
+    selection[0] = 2
+    pipeline.tick()
+
+    assert pipeline.metrics["reasoner_calls"] == 2
+    assert len(advice) == 2
+    assert advice[0].advice == advice[1].advice
 
 
 def test_coach_restarts_while_stopped_capture_finishes(tmp_path):
