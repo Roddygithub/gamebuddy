@@ -86,6 +86,8 @@ class GameBuddyApp(QObject):
         self._shot: tuple[float, str, str, str, bytes] | None = None
         self._last_stt_text = ""
         self._speech_gen = 0  # bumped by each reply, so an older one stops talking
+        self._speech_lock = threading.Lock()
+        self._speech_cancelled: threading.Event | None = None
 
         self.kin = Kin(self.cfg, self.store, self._kin_callbacks())
         self.kin.language = self.tr.language
@@ -476,6 +478,18 @@ class GameBuddyApp(QObject):
                     self._shot = None
             if not current or (current.id, current.capture_id, current.app_id) != source:
                 return None
+        else:
+            # Validate identity on fresh and expired-cache paths too. Backends
+            # such as Hyprland may reuse a window address after replacement.
+            try:
+                current = self.backend.find_window(window.id)
+            except Exception:  # noqa: BLE001 — stale frames fail closed
+                current = None
+            if not current or (current.id, current.capture_id, current.app_id) != source:
+                with self._shot_lock:
+                    if self._shot is cached:
+                        self._shot = None
+                return None
         try:
             png = self.backend.capture(window)
         except CaptureError as exc:
@@ -546,19 +560,18 @@ class GameBuddyApp(QObject):
             self.pool.start(lambda: self._speak(text))
 
     def _speak(self, text: str) -> None:
-        """Sentence by sentence: the first words leave long before the whole reply is voiced.
-
-        ``timings.synthesis_s`` is time to the *first* chunk, which is what the
-        player hears as latency.
-        """
+        """Synthesize sentence by sentence and stop promptly when superseded."""
         from gamebuddy.audio import player
         from gamebuddy.speech.tts import split_sentences, synthesize
 
         chunks = split_sentences(text)
         if not chunks:
             return
-        self._speech_gen += 1
-        generation = self._speech_gen
+        with self._speech_lock:
+            self._speech_gen += 1
+            generation = self._speech_gen
+            cancelled = threading.Event()
+            self._speech_cancelled = cancelled
         player.stop()
         started = time.monotonic()
         self._speaking.set()
@@ -567,15 +580,15 @@ class GameBuddyApp(QObject):
         try:
             self.bridge.status.emit("speaking")
             for index, chunk in enumerate(chunks):
-                if generation != self._speech_gen:
+                if cancelled.is_set() or generation != self._speech_gen:
                     return
                 audio, fmt = synthesize(chunk, self.cfg, self.tr.language)
                 if index == 0:
                     self._timings["synthesis_s"] = round(time.monotonic() - started, 2)
-                if generation != self._speech_gen:
+                if cancelled.is_set() or generation != self._speech_gen:
                     return
                 if audio:
-                    player.play(audio, fmt, self.cfg.audio.output_device)
+                    player.play(audio, fmt, self.cfg.audio.output_device, cancelled)
         except Exception as exc:  # noqa: BLE001
             log.warning("tts failed: %s", exc)
         finally:
@@ -587,7 +600,10 @@ class GameBuddyApp(QObject):
 
     def _cancel_speech(self) -> None:
         """Stop active playback and prevent its worker from voicing later chunks."""
-        self._speech_gen += 1
+        with self._speech_lock:
+            self._speech_gen += 1
+            if self._speech_cancelled:
+                self._speech_cancelled.set()
         from gamebuddy.audio import player
 
         player.stop()

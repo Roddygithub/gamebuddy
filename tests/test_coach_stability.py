@@ -2,6 +2,7 @@
 
 import io
 import json
+import threading
 from types import SimpleNamespace
 
 from PIL import Image, ImageDraw
@@ -130,6 +131,68 @@ def test_delivery_and_turn_timing_are_audited(tmp_path):
     turn = pipeline.metrics["last_turn"]
     assert turn["outcome"] == "delivered"
     assert turn["frame_kib"] > 0  # the payload actually sent is measured every turn
+
+
+def test_cooldown_uses_monotonic_clock_and_retries_new_candidate(tmp_path, monkeypatch):
+    import gamebuddy.coach.pipeline as module
+
+    clock = [100.0]
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+    second = {**SHOP, "advice": "Buy Slark now; the shop is about to refresh."}
+    pipeline, advice, _ = _build(
+        tmp_path,
+        [SHOP, second],
+        [SHOP_FRAME, SHOP_FRAME, OTHER_FRAME, OTHER_FRAME, OTHER_FRAME, OTHER_FRAME],
+    )
+    pipeline.cfg.coach.cooldown_s = 10
+
+    pipeline.tick()
+    assert pipeline._last_advice_at == 100.0
+    clock[0] = 105.0
+    pipeline.tick()  # new decision window during cooldown: defer, do not mark judged
+    assert pipeline.metrics["reasoner_calls"] == 1
+    clock[0] = 111.0
+    pipeline.tick()  # unchanged candidate is evaluated after cooldown expires
+
+    assert pipeline.metrics["reasoner_calls"] == 2
+    assert [item.advice for item in advice] == [SHOP["advice"], second["advice"]]
+
+
+def test_changed_confirmation_frame_is_evaluated_on_next_tick(tmp_path):
+    pipeline, advice, _ = _build(
+        tmp_path,
+        [SHOP, SHOP],
+        [SHOP_FRAME, OTHER_FRAME, OTHER_FRAME, OTHER_FRAME],
+    )
+
+    pipeline.tick()  # first decision vanished before confirmation
+    assert advice == []
+    pipeline.tick()  # the now-stable new decision is evaluated
+
+    assert pipeline.metrics["reasoner_calls"] == 2
+    assert len(advice) == 1
+
+
+def test_stop_during_confirmation_prevents_advice_delivery(tmp_path):
+    pipeline, advice, _ = _build(tmp_path, [SHOP], [SHOP_FRAME])
+    entered = threading.Event()
+    release = threading.Event()
+
+    def blocked_capture():
+        entered.set()
+        assert release.wait(2)
+        return SHOP_FRAME
+
+    pipeline.capture_fresh = blocked_capture
+    worker = threading.Thread(target=pipeline.tick)
+    worker.start()
+    assert entered.wait(2)
+    pipeline.stop()
+    release.set()
+    worker.join(2)
+
+    assert not worker.is_alive()
+    assert advice == []
 
 
 def test_a_text_only_model_never_gets_a_frame(tmp_path):

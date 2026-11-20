@@ -35,3 +35,10 @@ Les changements locaux instrumentent capture, évaluation, confirmation et taill
 tour; la TTS par phrase mesure le délai de synthèse jusqu’au premier segment. Aucune partie
 réelle ni lecture audio en session n’a été lancée. La latence du provider, le premier token,
 le premier son perçu et la durée complète de réponse restent **inconnus**.
+
+Le 20 novembre 2026, `gamebuddy eval evals/coach --repeat 1 --language fr` a appelé le modèle
+Coach configuré (`codex / gpt-6-luna`) sur deux exemples synthétiques: **1/2 pass**. L’abstention
+attendue sur le cas ambigu a passé; le shop attendu `ADVISE` a reçu `ABSTAIN` et échoué le
+critère de décision. Perception: 1/1; grounding: 1/2; latence du harness: 2/2. Rapport brut
+local `/tmp/gamebuddy-eval-synthetic-2026-11-20.json`, non versionné. Ce corpus trop petit et
+synthétique ne représente pas le jeu réel ni une mesure comparative avant/après.

@@ -45,6 +45,8 @@ class HyprlandBackend(CaptureBackend):
         current = self.find_window(window.id)
         if current is None:
             raise CaptureError("window_lost")
+        if current.capture_id != window.capture_id or current.app_id != window.app_id:
+            raise CaptureError("window_replaced")
         if not current.capture_id:
             raise CaptureError(
                 "window_capture_unavailable: update Hyprland and grim for direct window capture"

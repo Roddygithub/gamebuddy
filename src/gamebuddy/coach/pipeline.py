@@ -65,8 +65,10 @@ class CoachPipeline:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._last_hash: int | None = None
+        self._last_saved_hash: int | None = None
         self._last_advice = ""
         self._last_advice_at = 0.0
+        self._delivery_lock = threading.Lock()
         self._next_due = 0.0
         self.paused = False
         self.needs_vision = False
@@ -97,7 +99,8 @@ class CoachPipeline:
         self._thread.start()
 
     def stop(self) -> None:
-        self._stop.set()
+        with self._delivery_lock:
+            self._stop.set()
 
     # ---- loop ------------------------------------------------------------
     def _loop(self) -> None:
@@ -154,14 +157,17 @@ class CoachPipeline:
         if self._last_hash is not None and hash_distance(h, self._last_hash) < self.cfg.coach.min_change:
             # Nothing moved since the last look: this screen was already judged.
             return None
-        self._last_hash = h
         self.metrics["candidates"] += 1
-        if self.cfg.coach.save_frames:
+        if self.cfg.coach.save_frames and self._last_saved_hash != h:
             self._save_frame(frame)
+            self._last_saved_hash = h
         if time.monotonic() - self._last_advice_at < self.cfg.coach.cooldown_s:
             self.store.log_coach("pre_gate", "cooldown", "", self.game_title)
             return None
 
+        # Mark only a frame that actually reaches the reasoner. A candidate that
+        # arrives during cooldown must be retried once the cooldown expires.
+        self._last_hash = h
         eval_started = time.monotonic()
         obs = self.evaluate(frame)
         eval_ms = int((time.monotonic() - eval_started) * 1000)
@@ -179,7 +185,13 @@ class CoachPipeline:
             self.store.log_coach("pre_gate", "screen_moved", obs.advice, self.game_title)
             self._log_turn(capture_ms, eval_ms, confirm_ms, "dropped")
             return None
-        self._deliver(obs)
+        # stop() and delivery share a lock so cancellation during confirmation
+        # cannot leak advice after Coach has been disabled.
+        with self._delivery_lock:
+            if self._stop.is_set():
+                self._log_turn(capture_ms, eval_ms, confirm_ms, "cancelled")
+                return None
+            self._deliver(obs)
         self._log_turn(capture_ms, eval_ms, confirm_ms, "delivered")
         return obs
 
@@ -193,11 +205,10 @@ class CoachPipeline:
             return False
         frame = self.capture_fresh()
         self.metrics["confirm_checks"] += 1
-        if not frame:
+        if self._stop.is_set() or not frame:
             return False
         h = dhash(frame)
         if self._last_hash is not None and hash_distance(h, self._last_hash) >= self.cfg.coach.min_change:
-            self._last_hash = h
             return False
         return True
 
@@ -246,7 +257,7 @@ class CoachPipeline:
     def _deliver(self, obs: Observation) -> None:
         self.metrics["advised"] += 1
         self._last_advice = obs.advice
-        self._last_advice_at = time.time()
+        self._last_advice_at = time.monotonic()
         self.store.log_coach("pre_gate", "delivered", obs.advice, self.game_title)
         self.on_advice(obs)
 

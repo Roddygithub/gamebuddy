@@ -61,6 +61,20 @@ def test_reused_hyprland_address_fails_closed_when_toplevel_changes():
     assert app._shot is None
 
 
+def test_replaced_window_fails_closed_without_a_usable_cache():
+    selected = WindowInfo("0x123", "Game", "game", Rect(0, 0, 32, 32), capture_id="old")
+    replacement = WindowInfo("0x123", "Game", "game", Rect(0, 0, 32, 32), capture_id="new")
+    for fresh, expired in ((True, False), (False, True)):
+        app = _app(selected)
+        app.backend.current = replacement
+        if expired:
+            app._shot = (time.monotonic() - 1, selected.id, selected.capture_id, selected.app_id, b"old")
+
+        assert app.capture_game(fresh=fresh) is None
+        assert app.backend.captures == 0
+        assert app._shot is None
+
+
 def test_recent_frame_is_reused_for_the_same_window_identity():
     selected = WindowInfo("1", "Game", "game", Rect(0, 0, 32, 32), capture_id="same")
     app = _app(selected)

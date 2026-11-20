@@ -13,38 +13,48 @@ from pathlib import Path
 import numpy as np
 
 _current: dict[str, object] = {"proc": None, "stop": threading.Event()}
+_lock = threading.RLock()
 
 
 def stop() -> None:
-    ev = _current["stop"]
-    assert isinstance(ev, threading.Event)
-    ev.set()
-    proc = _current.get("proc")
-    if isinstance(proc, subprocess.Popen) and proc.poll() is None:
-        proc.terminate()
-    try:
-        import sounddevice as sd
+    with _lock:
+        ev = _current["stop"]
+        assert isinstance(ev, threading.Event)
+        ev.set()
+        proc = _current.get("proc")
+        if isinstance(proc, subprocess.Popen) and proc.poll() is None:
+            proc.terminate()
+        try:
+            import sounddevice as sd
 
-        sd.stop()
-    except Exception:  # noqa: BLE001
-        pass
+            sd.stop()
+        except Exception:  # noqa: BLE001
+            pass
 
 
-def play(data: bytes, fmt: str = "wav", device: str = "") -> None:
+def play(
+    data: bytes,
+    fmt: str = "wav",
+    device: str = "",
+    cancelled: threading.Event | None = None,
+) -> None:
     """Blocking playback. WAV goes through sounddevice; anything else through a CLI player."""
-    stop()
-    ev = threading.Event()
-    _current["stop"] = ev
+    with _lock:
+        if cancelled and cancelled.is_set():
+            return
+        stop()
+        ev = threading.Event()
+        _current["stop"] = ev
     if fmt == "wav":
         try:
-            _play_wav(data, device)
+            _play_wav(data, device, cancelled)
             return
         except Exception:  # noqa: BLE001 - fall back to CLI
             pass
-    _play_cli(data, fmt)
+    _play_cli(data, fmt, cancelled)
 
 
-def _play_wav(data: bytes, device: str) -> None:
+def _play_wav(data: bytes, device: str, cancelled: threading.Event | None = None) -> None:
     import sounddevice as sd
 
     with wave.open(io.BytesIO(data), "rb") as wf:
@@ -59,11 +69,14 @@ def _play_wav(data: bytes, device: str) -> None:
     dev = None
     if device:
         dev = int(device) if device.isdigit() else device
-    sd.play(samples, rate, device=dev)
+    with _lock:
+        if cancelled and cancelled.is_set():
+            return
+        sd.play(samples, rate, device=dev)
     sd.wait()
 
 
-def _play_cli(data: bytes, fmt: str) -> None:
+def _play_cli(data: bytes, fmt: str, cancelled: threading.Event | None = None) -> None:
     for player in ("pw-play", "paplay", "ffplay", "mpv", "afplay", "aplay"):
         if shutil.which(player):
             break
@@ -79,8 +92,11 @@ def _play_cli(data: bytes, fmt: str) -> None:
             cmd = ["mpv", "--no-video", "--really-quiet", str(path)]
         else:
             cmd = [player, str(path)]
-        proc = subprocess.Popen(cmd)
-        _current["proc"] = proc
+        with _lock:
+            if cancelled and cancelled.is_set():
+                return
+            proc = subprocess.Popen(cmd)
+            _current["proc"] = proc
         proc.wait()
     finally:
         path.unlink(missing_ok=True)

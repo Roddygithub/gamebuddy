@@ -24,7 +24,7 @@ elle ne change pas la sélection de langue de l’application.
 
 Après corrections: voir `PERFORMANCE-RESULTS.md` pour le résultat complet. Les exemples de
 `evals/coach` présents sont dessinés/synthétiques; aucun appel à un modèle distant ni aucune
-capture de jeu n’a servi de baseline de qualité dans cette phase.
+capture de jeu n’a servi à la baseline initiale.
 
 ## Portée et limites
 
