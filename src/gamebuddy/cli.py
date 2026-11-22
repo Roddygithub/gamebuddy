@@ -15,6 +15,7 @@ from pathlib import Path
 
 from gamebuddy import __version__
 from gamebuddy.config import load_config, save_config
+from gamebuddy.display import display_text
 from gamebuddy.ipc import is_running, send_command
 from gamebuddy.paths import config_file, db_file, socket_path
 
@@ -334,9 +335,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"gamebuddy: no answer after {args.timeout:g}s", file=sys.stderr)
             return 1
         if not resp.get("ok"):
-            print(f"gamebuddy: {resp.get('error', 'no answer')}", file=sys.stderr)
+            print(f"gamebuddy: {display_text(resp.get('error', 'no answer'))}", file=sys.stderr)
             return 1
-        print(resp.get("reply", ""))
+        # The reply comes from a model: printed as text, never as commands.
+        print(display_text(resp.get("reply", "")))
         return 0
     if cmd in ("toggle", "show", "hide", "status", "unpin", "settings", "ai-settings", "quit"):
         return _send({"cmd": cmd})
@@ -346,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         from gamebuddy.capture import get_backend
 
         for w in get_backend(load_config().capture.backend).list_windows():
-            print(f"{w.id}\t{w.rect.w}x{w.rect.h}\t{w.label}")
+            print(f"{w.id}\t{w.rect.w}x{w.rect.h}\t{display_text(w.label)}")
         return 0
     if cmd == "select-window":
         return _send({"cmd": "select_window", "id": args.id} if args.id else {"cmd": "pick_window"})

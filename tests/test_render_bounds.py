@@ -34,6 +34,22 @@ def test_only_web_links_survive():
     assert "https://example.com" in html
 
 
+def test_model_images_never_reach_qt():
+    # Qt resolves an image source while rendering the bubble: a local device
+    # would be read whole, without a click. The alt text stays, the source goes.
+    html = md_to_html("look ![zero](file:///dev/zero) and ![ok](https://example.com/a.png)")
+    assert "dev/zero" not in html
+    assert "example.com/a.png" not in html
+    assert "<img" not in html.lower()
+    assert "look" in html
+    assert "zero" in html  # alt text survives
+
+
+def test_images_in_pinned_content_are_dropped_too(widget):
+    widget.show_pin("t", "![zero](file:///dev/zero)")
+    assert "dev/zero" not in widget.pin_body.toHtml()
+
+
 def test_typed_text_stays_literal(widget):
     label = widget.add_bubble("<b>not bold</b> 500 < 600", "user")
     assert label.textFormat() == Qt.PlainText

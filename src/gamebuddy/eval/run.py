@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -24,6 +23,7 @@ from pathlib import Path
 from gamebuddy.coach.gate import Observation, parse_observation, validate
 from gamebuddy.coach.pipeline import observe_message
 from gamebuddy.config import Config
+from gamebuddy.display import display_text
 from gamebuddy.eval.cases import CaseError, CoachCase, load_cases
 from gamebuddy.eval.grade import MEASURES, RunRecord, grade_observation
 from gamebuddy.llm.router import coach_model, make_provider
@@ -31,15 +31,10 @@ from gamebuddy.prompts import COACH_SYSTEM
 
 REPORT_SCHEMA = "gamebuddy-eval/1"
 
-# ESC and friends turn printed text into terminal commands. Model output,
-# provider errors and dataset labels are foreign: they are stripped at the
-# display boundary, never in the JSON report, which keeps exact replay data.
-_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]")
-
-
-def _display(value) -> str:
-    """Foreign text, safe to print on a terminal."""
-    return _CONTROL.sub("", str(value))
+# Model output, provider errors and dataset labels are foreign; the helper
+# strips terminal control sequences at the display boundary, never in the JSON
+# report, which keeps the exact replay data.
+_display = display_text
 
 
 # ---- observation ------------------------------------------------------------
@@ -302,9 +297,9 @@ def run_eval_cli(args: argparse.Namespace) -> int:
                 out=out,
             )
     except CaseError as exc:
-        print(f"gamebuddy: {exc}", file=sys.stderr)
+        print(f"gamebuddy: {_display(exc)}", file=sys.stderr)
         return 2
     except ProviderError as exc:
-        print(f"gamebuddy: provider unavailable: {exc}", file=sys.stderr)
+        print(f"gamebuddy: provider unavailable: {_display(exc)}", file=sys.stderr)
         return 2
     return code

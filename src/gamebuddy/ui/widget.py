@@ -50,16 +50,29 @@ def _budget(text: str, limit: int = BUBBLE_LIMIT) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
+# An image reference makes Qt resolve its URL while the bubble renders, and a
+# model answer may name a local device (`![x](file:///dev/zero)`): that read is
+# unbounded and needs no click. Images are replaced by their alt text before
+# Qt's markdown importer sees a source at all.
+_MD_IMAGE = re.compile(r"!\[([^\]]*)\]\([^)]*\)")
+_HTML_IMAGE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+
+
+def _text_only(markdown: str) -> str:
+    """Markdown with every image source dropped, keeping its alt text."""
+    return _HTML_IMAGE.sub("", _MD_IMAGE.sub(r"\1", markdown))
+
+
 def _plain(markdown: str) -> str:
     doc = QTextDocument()
-    doc.setMarkdown(_budget(markdown))
+    doc.setMarkdown(_budget(_text_only(markdown)))
     return doc.toPlainText()
 
 
 def md_to_html(markdown: str) -> str:
     doc = QTextDocument()
-    doc.setMarkdown(_budget(markdown))
-    html = doc.toHtml()
+    doc.setMarkdown(_budget(_text_only(markdown)))
+    html = _HTML_IMAGE.sub("", doc.toHtml())
     # A model answer may carry any link; only web links are worth opening.
     return re.sub(r'href="(?!https?:|mailto:)[^"]*"', 'href="#"', html)
 

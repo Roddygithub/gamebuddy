@@ -149,6 +149,9 @@ class SettingsDialog(QDialog):
         self.stt_model = QComboBox()
         self.stt_model.setEditable(True)
         self.stt_model.addItems(["tiny", "base", "small", "medium", "whisper-1"])
+        # An editable combo box installs a plain QLineEdit, whose native paste
+        # retrieves a foreign offer whole; the bounded field replaces it.
+        self.stt_model.setLineEdit(BoundedLineEdit(cfg.speech.stt_model))
         self.stt_model.setCurrentText(cfg.speech.stt_model)
         self.stt_model.setToolTip(
             "Whisper local : tiny = rapide ; base = équilibré ; small/medium = plus lourds."

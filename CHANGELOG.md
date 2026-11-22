@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **No image sources in answers**: model markdown images are replaced by their alt
+  text before Qt renders a bubble, so a reply can no longer make the widget read a
+  local device (`file:///dev/zero`); pinned content and streaming take the same path.
+- **A bounded paste in every field**: the editable STT-model box installs the bounded
+  line edit, so its native Qt paste never retrieves a foreign offer whole.
+- **Console output stays text**: `gamebuddy ask`, `gamebuddy windows` and
+  `gamebuddy eval` strip terminal control sequences from model replies, window
+  titles, dataset labels and provider errors at the display boundary, while the
+  JSON report keeps the raw text for exact replay.
 - **A coach that keeps up**: the observation loop is now fixed-rate, so a slow
   model call no longer delays every later look, and stability is confirmed by one
   re-capture at `coach.confirm_poll_s` instead of waiting a whole interval —
