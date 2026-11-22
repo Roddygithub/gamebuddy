@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.1 — 2026-11-22
 
 - **No image sources in answers**: model markdown images are replaced by their alt
   text before Qt renders a bubble, so a reply can no longer make the widget read a
